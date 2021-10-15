@@ -18,11 +18,20 @@ namespace MongoDbReading
             var settings = new MongoClientSettings
             {
                 Server = mongoServerAddress,
+                ServerSelectionTimeout = TimeSpan.FromSeconds(5),                
+                ConnectTimeout = TimeSpan.FromSeconds(5),                   
                 GuidRepresentation = GuidRepresentation.Standard
             };
-            _mongoClient = new MongoClient(settings);
-            var mongoDdatabase = _mongoClient.GetDatabase(database);
-            _collection = mongoDdatabase.GetCollection<BsonDocument>("event-log");
+            try
+            {
+                _mongoClient = new MongoClient(settings);
+                var mongoDdatabase = _mongoClient.GetDatabase(database);
+                _collection = mongoDdatabase.GetCollection<BsonDocument>("event-log");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
 
         public async Task<IEnumerable<EventSource>> GetUniqueEventSources(DolittleTypeMap map)
@@ -80,14 +89,24 @@ namespace MongoDbReading
                         completeList.Add(new EventEntry
                         {
                             Aggregate = map.Aggregate.Name,
-                            Event = eventTypeId.Name,
-                            Time = document["Metadata"]["Occurred"].ToUniversalTime(),
-                            PayLoad = document["Content"].ToJson()
+                            Event     = eventTypeId.Name,
+                            Time      = document["Metadata"]["Occurred"].ToUniversalTime(),
+                            PayLoad   = document["Content"].ToJson()
                         });
                     }
                 }
             }
             return completeList;
+        }
+
+        public bool ConnectionWorks()
+        {
+            if(_collection is null)
+            {
+                Console.WriteLine("Unable to find any records using the provided MongoDB settings");
+                return false;
+            }
+            return true;
         }
     }
 }

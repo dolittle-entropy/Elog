@@ -2,7 +2,7 @@
   "profiles": {
     "Elog": {
       "commandName": "Project",
-      "commandLineArgs": "-a Kunde -d E:\\dev\\dolittle\\customers\\aksio\\PolicyManagement\\PolicyManagement\\PolicyAdmin\\Core\\bin\\Debug\\net5.0 -p 27019 -db event_store"
+      "commandLineArgs": "-a Kunde"
     }
   }
 }
