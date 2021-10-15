@@ -22,9 +22,6 @@ namespace TypeMapping
                 return null;
             }
 
-            var customAttributes = type.Attributes;
-
-
             var attribute = type.GetCustomAttribute<AggregateRootAttribute>();
             
             if(attribute is { })
