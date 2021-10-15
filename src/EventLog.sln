@@ -1,27 +1,58 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30114.105
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31808.319
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ConsoleApp", "ConsoleApp", "{8C4A6B15-C85F-40F8-B64F-B30F23E344C8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Elog", "Elog\Elog.csproj", "{632CDD7F-349E-4220-99B7-0D5768EDA51D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Elog", "Elog\Elog.csproj", "{632CDD7F-349E-4220-99B7-0D5768EDA51D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Functions", "Functions", "{3116D418-BFC2-4AC4-B93F-72770635445F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TypeMapping", "TypeMapping\TypeMapping.csproj", "{5ED55797-C8E8-409F-B29F-66AD9E985210}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{42A8C9EF-BC2A-4A4D-AA98-DEB0B4352786}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AssemblyReading", "AssemblyReading\AssemblyReading.csproj", "{2E6B1127-4492-41EB-B7F6-D4AA49DFABA5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoDbReading", "MongoDbReading\MongoDbReading.csproj", "{DE626F0D-2F0A-425B-963A-3EC1F6CD01EB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
-	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{632CDD7F-349E-4220-99B7-0D5768EDA51D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{632CDD7F-349E-4220-99B7-0D5768EDA51D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{632CDD7F-349E-4220-99B7-0D5768EDA51D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{632CDD7F-349E-4220-99B7-0D5768EDA51D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5ED55797-C8E8-409F-B29F-66AD9E985210}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5ED55797-C8E8-409F-B29F-66AD9E985210}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5ED55797-C8E8-409F-B29F-66AD9E985210}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5ED55797-C8E8-409F-B29F-66AD9E985210}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2E6B1127-4492-41EB-B7F6-D4AA49DFABA5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2E6B1127-4492-41EB-B7F6-D4AA49DFABA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2E6B1127-4492-41EB-B7F6-D4AA49DFABA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2E6B1127-4492-41EB-B7F6-D4AA49DFABA5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DE626F0D-2F0A-425B-963A-3EC1F6CD01EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE626F0D-2F0A-425B-963A-3EC1F6CD01EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE626F0D-2F0A-425B-963A-3EC1F6CD01EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE626F0D-2F0A-425B-963A-3EC1F6CD01EB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{632CDD7F-349E-4220-99B7-0D5768EDA51D} = {8C4A6B15-C85F-40F8-B64F-B30F23E344C8}
+		{5ED55797-C8E8-409F-B29F-66AD9E985210} = {3116D418-BFC2-4AC4-B93F-72770635445F}
+		{2E6B1127-4492-41EB-B7F6-D4AA49DFABA5} = {3116D418-BFC2-4AC4-B93F-72770635445F}
+		{DE626F0D-2F0A-425B-963A-3EC1F6CD01EB} = {3116D418-BFC2-4AC4-B93F-72770635445F}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {BF1E10CE-A543-4BE7-8C1C-9F24359345BB}
 	EndGlobalSection
 EndGlobal

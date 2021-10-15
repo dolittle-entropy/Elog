@@ -7,4 +7,18 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Include="..\.editorconfig" Link=".editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ConsoleTables" Version="2.4.2" />
+    <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="4.0.0-beta.74" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AssemblyReading\AssemblyReading.csproj" />
+    <ProjectReference Include="..\MongoDbReading\MongoDbReading.csproj" />
+  </ItemGroup>
+
 </Project>
