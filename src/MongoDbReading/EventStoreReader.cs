@@ -75,7 +75,7 @@ namespace MongoDbReading
 
         public async Task<IEnumerable<EventEntry>> GetEventLog(DolittleTypeMap map, Guid id)
         {
-            Console.WriteLine("Reading eventlog...");
+            Out.Write("Reading the eventlog...");
 
             var aggregateId = $"UUID(\"{map.Aggregate.Id}\")";
             var eventSourceId = $"UUID(\"{id}\")";
@@ -106,7 +106,7 @@ namespace MongoDbReading
         {
             if(_collection is null)
             {
-                Console.WriteLine("Unable to find any records using the provided MongoDB settings");
+                Out.DisplayError("Unable to find any records using the provided MongoDB settings");
                 return false;
             }
             return true;
