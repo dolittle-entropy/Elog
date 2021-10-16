@@ -15,6 +15,9 @@ namespace Elog
         [Option(Description = "Lists your configurations")]
         public bool List { get; set; }
 
+        [Option(Description = "Deletes the first configuration that matches the name provided")]
+        public string Delete { get; set; }
+
         const string configurationFileName = "elog.config";
 
         readonly string _configurationFile;
@@ -32,6 +35,13 @@ namespace Elog
                 DisplayConfigurations();
                 return;
             }
+
+            if(!string.IsNullOrEmpty(Delete))
+            {
+                DeleteConfiguration();
+                return;
+            }
+
             Console.WriteLine("Create a configuration for ELog");
             Console.WriteLine(new String('-', 80));
             
@@ -66,6 +76,21 @@ namespace Elog
                 Console.WriteLine($"Configuration '{config.Name}' added");
             }
             WriteConfiguration(savedConfigs);
+        }
+
+        private void DeleteConfiguration()
+        {
+            var configurations = LoadConfiguration();
+            var configurationToDelete = configurations.FirstOrDefault(c => c.Name.Equals(Delete, StringComparison.InvariantCultureIgnoreCase));
+            if (configurationToDelete is { })
+            {
+                configurations.Remove(configurationToDelete);
+                WriteConfiguration(configurations);
+            }
+            else
+            {
+                Console.WriteLine($"ERROR: Could not find configuration named '{Delete}'");
+            }
         }
 
         private void DisplayConfigurations()
