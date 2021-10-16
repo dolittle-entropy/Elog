@@ -126,9 +126,10 @@ namespace Elog
         private bool TestConfiguration(ElogConfiguration config)
         {
             const string keyDolittleSDKFile = "Dolittle.SDK.Aggregates.dll";
-            if (!File.Exists(keyDolittleSDKFile))
+            var filePath = Path.Combine(config.BinariesPath, keyDolittleSDKFile);
+            if (!File.Exists(filePath))
             {
-                Out.DisplayError($"The binaries folder '{config.BinariesPath}' does not appear to contain a key file '{keyDolittleSDKFile}' ");
+                Out.DisplayError($"The folder '{config.BinariesPath}' does not contain the key file '{keyDolittleSDKFile}'. Configuration fails!");
                 return false;
             }
 
