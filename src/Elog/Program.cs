@@ -60,7 +60,7 @@ namespace Elog
             var configurationFile = Path.Combine(configurationFolder, ElogConfiguration.ConfigurationFileName);
             if (!File.Exists(configurationFile))
             {
-                Console.WriteLine("No configuration found. Run 'elog.exe configure' to create a configuration");
+                Console.WriteLine("ERROR: No configuration found! Run 'elog.exe configure' to create a configuration.\nA wizard will guide you through the values required");
                 return null;
             }
             var fileContents = File.ReadAllText(configurationFile);
