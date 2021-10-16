@@ -14,8 +14,7 @@ namespace AssemblyReading
 
         public DolittleTypeMap GenerateMapForAggregate(string aggregateName)
         {
-            Console.WriteLine("Reading assemblies...");
-
+            var skipDllsWith = new[] { "Microsoft.", "DnsClient.", "Serilog.", "Newtonsoft.", "SwashBuckle.", "System.", "HotChocolate.", "GraphQL.", "Grpc.", "Dolittle.", "Google.", "AutoFac.", "MongoDB.", "Polly.", "AutofacSerilogIntegration.", "SharpCompress.",  };
             var aggregateRootType = FindAndIdentifyAggregateRootType();
             if(aggregateRootType is null)
             {
@@ -24,8 +23,6 @@ namespace AssemblyReading
             }
             var dllFiles = Directory.GetFiles(_assemblyFolder, "*.dll");
             var typeMap = new DolittleTypeMap();
-
-            var skipDllsWith = new[] { "Microsoft.", "DnsClient.", "Serilog.", "Newtonsoft.", "SwashBuckle.", "System.", "HotChocolate.", "GraphQL.", "Grpc.", "Dolittle.", "Google.", "AutoFac.", "MongoDB.", "Polly.", "AutofacSerilogIntegration.", "SharpCompress.",  };
 
             foreach(var dllFile in dllFiles)
             {
@@ -63,7 +60,7 @@ namespace AssemblyReading
             }
             if(typeMap.Aggregate is { })
             {
-                Console.WriteLine($"Aggregate '{typeMap.Aggregate.Name}' found. \nThe solution contains a total of {typeMap.Events.Count} distinct events");
+                Console.WriteLine($"Aggregate '{typeMap.Aggregate.Name}', {typeMap.Aggregate.Id}.\nEventTypes found in binaries folder: {typeMap.Events.Count}");
             }
             return typeMap;
         }

@@ -9,9 +9,12 @@ using System.Threading.Tasks;
 
 namespace Elog
 {
-    [Command("configure", Description = "Create a named configuration to work with")]
+    [Command("configure", Description = "Runs a configuration wizard to get you started")]
     public class Configure
     {
+        [Option(Description = "Lists your configurations")]
+        public bool List { get; set; }
+
         const string configurationFileName = "elog.config";
 
         readonly string _configurationFile;
@@ -24,6 +27,11 @@ namespace Elog
 
         public void OnExecute(CommandLineApplication app)
         {
+            if(List)
+            {
+                DisplayConfigurations();
+                return;
+            }
             Console.WriteLine("Create a configuration for ELog");
             Console.WriteLine(new String('-', 80));
             
@@ -58,6 +66,17 @@ namespace Elog
                 Console.WriteLine($"Configuration '{config.Name}' added");
             }
             WriteConfiguration(savedConfigs);
+        }
+
+        private void DisplayConfigurations()
+        {
+            var savedConfigs = LoadConfiguration();
+            foreach(var config in savedConfigs)
+            {
+                Console.WriteLine($"- {config.Name}");
+            }
+            Console.WriteLine(new String('-', 80));
+            Console.WriteLine($"{savedConfigs.Count} Configurations found");
         }
 
         private bool TestConfiguration(ElogConfiguration config)
