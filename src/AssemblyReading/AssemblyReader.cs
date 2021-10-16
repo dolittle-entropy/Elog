@@ -1,40 +1,39 @@
-﻿using System.Reflection;
+﻿using OutputWriting;
+using System.Reflection;
 using TypeMapping;
 
 namespace AssemblyReading
 {
     public class AssemblyReader
     {
+        static string[] skipDllsWith = new[] { "Microsoft.", "DnsClient.", "Serilog.", "Newtonsoft.", "SwashBuckle.", "System.", "HotChocolate.", "GraphQL.", "Grpc.", "Dolittle.", "Google.", "AutoFac.", "MongoDB.", "Polly.", "AutofacSerilogIntegration.", "SharpCompress.", "libwkhtmltox." };
         readonly string _assemblyFolder;
 
-        public AssemblyReader(string dolittleAssemblyFolder)
+        IOutputWriter Out { get; }
+
+        public AssemblyReader(string dolittleAssemblyFolder, IOutputWriter outputWriter)
         {
             _assemblyFolder = dolittleAssemblyFolder;
+            Out = outputWriter;
         }
 
         public DolittleTypeMap GenerateMapForAggregate(string aggregateName)
         {
-            var skipDllsWith = new[] { "Microsoft.", "DnsClient.", "Serilog.", "Newtonsoft.", "SwashBuckle.", "System.", "HotChocolate.", "GraphQL.", "Grpc.", "Dolittle.", "Google.", "AutoFac.", "MongoDB.", "Polly.", "AutofacSerilogIntegration.", "SharpCompress.",  };
             var aggregateRootType = FindAndIdentifyAggregateRootType();
             if(aggregateRootType is null)
             {
-                Console.WriteLine("Unable to find aggregate root type, must abort");
+                Out.DisplayError("Unable to find aggregate root type, must abort");
                 return null;
             }
-            var dllFiles = Directory.GetFiles(_assemblyFolder, "*.dll");
+            var dllFiles = LoadDllFiles();
             var typeMap = new DolittleTypeMap();
 
             foreach(var dllFile in dllFiles)
             {
-                if(skipDllsWith.Any(name => dllFile.Contains(name, StringComparison.InvariantCultureIgnoreCase)))
-                {
-                    continue;
-                }
-                var assembly = Assembly.LoadFrom(dllFile);
                 Type[] types;
                 try
                 {
-                    types = assembly.GetTypes();
+                   types = Assembly.LoadFrom(dllFile).GetTypes();                    
                 }
                 catch
                 {
@@ -43,8 +42,6 @@ namespace AssemblyReading
 
                 foreach(var type in types)
                 {
-                    var typeName = type.FullName;
-                        
                     if(type.AsDolittleAggregate(aggregateRootType) is { } dolittleAggregate)
                     {
                         if(dolittleAggregate.Name.Equals(aggregateName, StringComparison.InvariantCultureIgnoreCase))
@@ -60,7 +57,7 @@ namespace AssemblyReading
             }
             if(typeMap.Aggregate is { })
             {
-                Console.WriteLine($"Aggregate '{typeMap.Aggregate.Name}', {typeMap.Aggregate.Id}.\nEventTypes found in binaries folder: {typeMap.Events.Count}");
+                Out.Write($"Aggregate '{typeMap.Aggregate.Name}', {typeMap.Aggregate.Id}.\nEventTypes found in binaries folder: {typeMap.Events.Count}");
             }
             return typeMap;
         }
@@ -68,28 +65,21 @@ namespace AssemblyReading
         public IEnumerable<DolittleAggregate> GetAllAggregates()
         {
             var aggregateRootType = FindAndIdentifyAggregateRootType();
-            var finalList = new List<DolittleAggregate>();
             if (aggregateRootType is null)
             {
-                Console.WriteLine("Unable to find aggregate root type, must abort");
+                Out.DisplayError("Unable to find aggregate root type, must abort");
                 return null;
             }
-            var dllFiles = Directory.GetFiles(_assemblyFolder, "*.dll");
-            var typeMap = new DolittleTypeMap();
 
-            var skipDllsWith = new[] { "Microsoft.", "DnsClient.", "Serilog.", "Newtonsoft.", "SwashBuckle.", "System.", "HotChocolate.", "GraphQL.", "Grpc.", "Dolittle.", "Google.", "AutoFac.", "MongoDB.", "Polly.", "AutofacSerilogIntegration.", "SharpCompress.", };
+            var finalList = new List<DolittleAggregate>();
+            var dllFiles = LoadDllFiles();
 
             foreach (var dllFile in dllFiles)
             {
-                if (skipDllsWith.Any(name => dllFile.Contains(name, StringComparison.InvariantCultureIgnoreCase)))
-                {
-                    continue;
-                }
-                var assembly = Assembly.LoadFrom(dllFile);
                 Type[] types;
                 try
                 {
-                    types = assembly.GetTypes();
+                    types = Assembly.LoadFrom(dllFile).GetTypes();
                 }
                 catch
                 {
@@ -98,8 +88,6 @@ namespace AssemblyReading
 
                 foreach (var type in types)
                 {
-                    var typeName = type.FullName;
-
                     if (type.AsDolittleAggregate(aggregateRootType) is { } dolittleAggregate)
                     {
                         finalList.Add(dolittleAggregate);
@@ -109,9 +97,25 @@ namespace AssemblyReading
             return finalList;
         }
 
+        List<string> LoadDllFiles()
+        {
+            var dllFiles  = Directory.GetFiles(_assemblyFolder, "*.dll");
+            var finalList = new List<string>();
+
+            foreach(var dllFile in dllFiles)
+            {
+                if (!skipDllsWith.Any(name => dllFile.Contains(name, StringComparison.InvariantCultureIgnoreCase)))
+                {
+                    finalList.Add(dllFile);
+                }
+            }
+            return finalList;
+        }
+
         private Type FindAndIdentifyAggregateRootType()
         {
             const string expectedAssemblyName = "Dolittle.SDK.Aggregates.dll";
+
             var assembly = Assembly.LoadFrom(Path.Combine(_assemblyFolder, expectedAssemblyName));
             if(assembly is { })
             {

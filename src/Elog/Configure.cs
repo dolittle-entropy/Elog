@@ -1,11 +1,8 @@
-﻿using McMaster.Extensions.CommandLineUtils;
+﻿using ConsoleTables;
+using McMaster.Extensions.CommandLineUtils;
 using MongoDbReading;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using OutputWriting;
 
 namespace Elog
 {
@@ -22,6 +19,8 @@ namespace Elog
 
         readonly string _configurationFile;
 
+        readonly IOutputWriter Out = new ConsoleOutputWriter();
+
         public Configure()
         {
             var applicationFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -30,50 +29,48 @@ namespace Elog
 
         public void OnExecute(CommandLineApplication app)
         {
-            if(List)
+            if (List)
             {
                 DisplayConfigurations();
                 return;
             }
 
-            if(!string.IsNullOrEmpty(Delete))
+            if (!string.IsNullOrEmpty(Delete))
             {
                 DeleteConfiguration();
                 return;
             }
 
-            Console.WriteLine("Create a configuration for ELog");
-            Console.WriteLine(new String('-', 80));
-            
-            var config       = PromptForConfiguration();
+
+            Out.Write("Running the configuration wizard for ELog");
+            Out.Divider();
+
+            var config = PromptForConfiguration();
             var savedConfigs = LoadConfiguration();
 
-            if(savedConfigs is null)
+            if (savedConfigs is null)
             {
                 savedConfigs = new List<ElogConfiguration>();
                 savedConfigs.Add(config);
                 WriteConfiguration(savedConfigs);
-                Console.WriteLine($"Configuration '{config.Name}' added.");
+                Out.Write($"Configuration '{config.Name}' created.");
             }
-            else if(savedConfigs.Any(c => c.Name.Equals(config.Name, StringComparison.InvariantCultureIgnoreCase)))
+            else if (savedConfigs.Any(c => c.Name.Equals(config.Name, StringComparison.InvariantCultureIgnoreCase)))
             {
-                Console.Write($"A configuration named {config.Name} already exists. Overwrite? Y/n");
-                var readKey = Console.ReadKey();
-                Console.WriteLine();
-                if (!readKey.Key.Equals(ConsoleKey.Enter) && !readKey.Key.Equals(ConsoleKey.Y))
+                if (!Out.Confirm($"A configuration named {config.Name} already exists. Overwrite?"))
                 {
-                    Console.WriteLine("Operation aborted");
+                    Out.Write("Operation aborted");
                     return;
                 }
                 var oldConfig = savedConfigs.First(c => c.Name.Equals(config.Name, StringComparison.InvariantCultureIgnoreCase));
                 savedConfigs.Remove(oldConfig);
                 savedConfigs.Add(config);
-                Console.WriteLine($"Configuration '{config.Name}' updated");
+                Out.Write($"Configuration '{config.Name}' updated");
             }
             else
             {
                 savedConfigs.Add(config);
-                Console.WriteLine($"Configuration '{config.Name}' added");
+                Out.Write($"Configuration '{config.Name}' added");
             }
             WriteConfiguration(savedConfigs);
         }
@@ -89,19 +86,42 @@ namespace Elog
             }
             else
             {
-                Console.WriteLine($"ERROR: Could not find configuration named '{Delete}'");
+                Out.DisplayError($"Could not find a configuration named '{Delete}'");
             }
         }
 
         private void DisplayConfigurations()
         {
+            Out.Write("Elog - List Configurations\n");            
+            Out.Write($"Configuration loaded from: {_configurationFile}\n");
+            
             var savedConfigs = LoadConfiguration();
-            foreach(var config in savedConfigs)
+            var consoleTable = new ConsoleTable("Name", "Server", "Port", "Database", "Solution");
+            foreach (var config in savedConfigs)
             {
-                Console.WriteLine($"- {config.Name}");
+                consoleTable.AddRow(
+                    config.Name, 
+                    config.MongoConfig.MongoServer, 
+                    config.MongoConfig.Port,
+                    config.MongoConfig.MongoDB,
+                    FindSolutionNameInBinariesPath(config.BinariesPath));                
             }
-            Console.WriteLine(new String('-', 80));
-            Console.WriteLine($"{savedConfigs.Count} Configurations found");
+            consoleTable.Write(Format.Minimal);
+            Out.Divider();
+            Out.Write($"{savedConfigs.Count} Configurations found\n");
+        }
+
+        private string FindSolutionNameInBinariesPath(string binariesPath)
+        {
+            var bits = binariesPath.Split('\\');
+            for(int i = bits.Length - 1; i > 0; i--)
+            {
+                if(bits[i].Equals("bin"))
+                {
+                    return bits[i - 2];
+                }
+            }
+            return string.Empty;
         }
 
         private bool TestConfiguration(ElogConfiguration config)
@@ -109,14 +129,15 @@ namespace Elog
             const string keyDolittleSDKFile = "Dolittle.SDK.Aggregates.dll";
             if (!File.Exists(keyDolittleSDKFile))
             {
-                Console.WriteLine($"The binaries folder '{config.BinariesPath}' does not appear to contain a key file '{keyDolittleSDKFile}' ");
+                Out.DisplayError($"The binaries folder '{config.BinariesPath}' does not appear to contain a key file '{keyDolittleSDKFile}' ");
                 return false;
             }
 
             var eventStoreReader = new EventStoreReader(
                 config.MongoConfig.MongoServer,
                 config.MongoConfig.Port,
-                config.MongoConfig.MongoDB);
+                config.MongoConfig.MongoDB,
+                Out);
 
             if (!eventStoreReader.ConnectionWorks())
             {
@@ -127,21 +148,20 @@ namespace Elog
 
         private ElogConfiguration PromptForConfiguration()
         {
-            Console.WriteLine("Hit [ENTER] to accept default values");
+            Out.Write("Hit [ENTER] to accept default values or edit where necessary:");
 
-            var configName = ReadLine("Give your config a name          : ", "Default");
-            var mongoServer = ReadLine("MongoDB ServerInstance           : ", "localhost");
-            var mongoDB = ReadLine("MongoDB Database name            : ", "event_store");
-            var mongoPort = ReadLine("Port to use                      : ", "27017");
-            var pathToBinaries = ReadLine("Complete path to binaries folder: ", "C:\\dev");
-            Console.WriteLine();
+            var configName     = Out.AskForValue("Give your config a name         : ", "Default");
+            var mongoServer    = Out.AskForValue("MongoDB ServerInstance          : ", "localhost");
+            var mongoDB        = Out.AskForValue("MongoDB Database name           : ", "event_store");
+            var mongoPort      = Out.AskForValue("Port to use                     : ", "27017");
+            var pathToBinaries = Out.AskForValue("Complete path to binaries folder: ", "C:\\dev");
+            Out.Divider();
 
             if (int.TryParse(mongoPort, out int port))
             {
                 var config = new ElogConfiguration
                 {
-                    Name = configName,
-                    IsDefault = true,
+                    Name = configName,                    
                     BinariesPath = pathToBinaries,
                     MongoConfig = new MongoConfig
                     {
@@ -153,54 +173,18 @@ namespace Elog
 
                 if (!TestConfiguration(config))
                 {
-                    Console.WriteLine("Configuration is invalid. Aborting");
+                    Out.DisplayError("Configuration is invalid. Aborting");
                     return null;
                 }
                 return config;
             }
             else
             {
-                Console.WriteLine("The Port for MongoDB is not valid. Configuration was not saved");
+                Out.DisplayError("The Port for MongoDB is not a valid number. Configuration was not saved");
             }
             return null;
         }
-
-        static string ReadLine(string prompt, string defaultValue)
-        {
-            Console.Write(prompt);
-            var currColor = Console.ForegroundColor;
-            Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.WriteLine(defaultValue);
-            Console.ForegroundColor = currColor;
-
-            var (_, top) = Console.GetCursorPosition();
-            Console.SetCursorPosition(prompt.Length, top - 1);
-            var key = Console.ReadKey();
-
-            while (key.Key == ConsoleKey.Backspace)
-            {
-                Console.SetCursorPosition(prompt.Length, top - 1);
-                key = Console.ReadKey();
-
-            }
-
-            if (key.Key == ConsoleKey.Enter)
-            {
-                Console.SetCursorPosition(0, top);
-                return defaultValue;
-            }
-            else
-            {
-                Console.Write(new string(' ', defaultValue.Length)); // clean this line
-                Console.SetCursorPosition(prompt.Length, top - 1);
-                Console.Write(key.KeyChar);
-                var res = key.KeyChar + Console.ReadLine();
-                Console.SetCursorPosition(0, top);
-                return res;
-            }
-
-        }
-
+       
         private List<ElogConfiguration> LoadConfiguration()
         {
             List<ElogConfiguration> existingConfiguration = null;
@@ -219,31 +203,8 @@ namespace Elog
             if (serialized.Length > 0)
             {
                 File.WriteAllText(_configurationFile, serialized);
-                Console.Write($"Configuration saved: {_configurationFile}");
+                Out.Write($"Configuration saved to: {_configurationFile}");
             }
         }
-    }
-
-    public class MongoConfig
-    {
-        public string MongoServer { get; set; }
-
-        public string MongoDB { get; set; }
-
-        public int Port { get; set; }
-
-    }
-
-    public class ElogConfiguration
-    {
-        public bool IsDefault { get; set; }
-
-        public string Name { get; set; }
-
-        public string BinariesPath { get; set; }
-
-        public MongoConfig MongoConfig { get; set; }
-
-        public static string ConfigurationFileName = "elog.config";
     }
 }

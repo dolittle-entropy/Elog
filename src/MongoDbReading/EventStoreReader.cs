@@ -1,6 +1,8 @@
 ﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using Newtonsoft.Json.Linq;
+using OutputWriting;
 using TypeMapping;
 
 namespace MongoDbReading
@@ -9,11 +11,15 @@ namespace MongoDbReading
     {
         protected static readonly BsonDocument Blank_Filter = new BsonDocument();
 
-        readonly IMongoCollection<BsonDocument> _collection;
         MongoClient _mongoClient;
+        
+        IOutputWriter Out { get; }
 
-        public EventStoreReader(string server, int port, string database)
+        readonly IMongoCollection<BsonDocument> _collection;
+
+        public EventStoreReader(string server, int port, string database, IOutputWriter outputWriter)
         {
+            Out = outputWriter;
             var mongoServerAddress = new MongoServerAddress(server, port);
             var settings = new MongoClientSettings
             {
@@ -30,38 +36,38 @@ namespace MongoDbReading
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Out.DisplayError(ex.Message);
             }
         }
 
         public async Task<IEnumerable<EventSource>> GetUniqueEventSources(DolittleTypeMap map)
         {
-            Console.WriteLine("Reading eventlog...");
-            var allDocuments = await _collection.Find(Blank_Filter).ToListAsync();
+            Out.Write($"Searching the eventlog for unique aggregates of {map.Aggregate.Name}...");
+
+            // Dirty, but works :)
+            var wrappedId = $"UUID(\"{map.Aggregate.Id}\")";
+            var query = $@"{{ 'Aggregate.WasAppliedByAggregate' : true, 'Aggregate.TypeId' : {wrappedId} }}";
+            var filter = BsonSerializer.Deserialize<BsonDocument>(query);
+
+            var allDocuments = await _collection.Find(filter).ToListAsync();
             var completeList = new List<EventSource>();
             foreach (var document in allDocuments)
             {
                 var dotNetObject = BsonTypeMapper.MapToDotNetValue(document);
-                var wasFromAggregate = document["Aggregate"]["WasAppliedByAggregate"].AsBoolean;
-                var aggregateId = document["Aggregate"]["TypeId"].AsGuid;
-
-                if (wasFromAggregate && aggregateId == map.Aggregate.Id)
+                var eventSourceId = document["Metadata"]["EventSource"].AsGuid;
+                var existing = completeList.FirstOrDefault(es => es.Id == eventSourceId);
+                if (existing is { })
                 {
-                    var eventSourceId = document["Metadata"]["EventSource"].AsGuid;
-                    var existing = completeList.FirstOrDefault(es => es.Id == eventSourceId);
-                    if (existing is { })
+                    existing.EventCount += 1;
+                }
+                else
+                {
+                    completeList.Add(new EventSource
                     {
-                        existing.EventCount += 1;
-                    }
-                    else
-                    {
-                        completeList.Add(new EventSource
-                        {
-                            Aggregate = map.Aggregate.Name,
-                            Id = eventSourceId,
-                            EventCount = 1
-                        });
-                    }
+                        Aggregate = map.Aggregate.Name,
+                        Id = eventSourceId,
+                        EventCount = 1
+                    });
                 }
             }
             return completeList;
@@ -70,31 +76,28 @@ namespace MongoDbReading
         public async Task<IEnumerable<EventEntry>> GetEventLog(DolittleTypeMap map, Guid id)
         {
             Console.WriteLine("Reading eventlog...");
-            var allDocuments = await _collection.Find(Blank_Filter).ToListAsync();
+
+            var aggregateId = $"UUID(\"{map.Aggregate.Id}\")";
+            var eventSourceId = $"UUID(\"{id}\")";
+            var query = $@"{{ 'Aggregate.WasAppliedByAggregate' : true, 'Aggregate.TypeId' : {aggregateId}, 'Metadata.EventSource' : {eventSourceId} }}";
+            var filter = BsonSerializer.Deserialize<BsonDocument>(query);
+
+
+            var allDocuments = await _collection.Find(filter).ToListAsync();
             var completeList = new List<EventEntry>();
             foreach (var document in allDocuments)
-            {
-                var dotNetObject = BsonTypeMapper.MapToDotNetValue(document);
-                var wasFromAggregate = document["Aggregate"]["WasAppliedByAggregate"].AsBoolean;
-                var aggregateId = document["Aggregate"]["TypeId"].AsGuid;
-
-                if (wasFromAggregate && aggregateId == map.Aggregate.Id)
+            {                
+                var eventTypeGuid = document["Metadata"]["TypeId"].AsGuid;
+                var eventTypeId = map.Events.FirstOrDefault(e => e.Id.Contains(eventTypeGuid.ToString(), StringComparison.InvariantCultureIgnoreCase));
+                               
+                completeList.Add(new EventEntry
                 {
-                    var eventSourceId = document["Metadata"]["EventSource"].AsGuid;                    
-                    var eventTypeGuid = document["Metadata"]["TypeId"].AsGuid;
-                    var eventTypeId = map.Events.FirstOrDefault(e => e.Id.Contains(eventTypeGuid.ToString(), StringComparison.InvariantCultureIgnoreCase));
-
-                    if(eventSourceId == id)
-                    {
-                        completeList.Add(new EventEntry
-                        {
-                            Aggregate = map.Aggregate.Name,
-                            Event     = eventTypeId.Name,
-                            Time      = document["Metadata"]["Occurred"].ToUniversalTime(),
-                            PayLoad   = document["Content"].ToJson()
-                        });
-                    }
-                }
+                    Aggregate = map.Aggregate.Name,
+                    Event     = eventTypeId.Name,
+                    IsPublic  = document["Metadata"]["Public"].AsBoolean,
+                    Time      = document["Metadata"]["Occurred"].ToUniversalTime(),
+                    PayLoad   = document["Content"].ToJson()
+                });                               
             }
             return completeList;
         }
