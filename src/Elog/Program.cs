@@ -13,7 +13,7 @@ namespace Elog
     [Command(Name = "elog", Description = "Lets you explore aggregates and their eventlogs")]
     [Subcommand(typeof(Configure))]
     public class Program
-    {        
+    {
         static IOutputWriter Out = new ConsoleOutputWriter();
 
         ElogConfiguration _config;
@@ -33,21 +33,20 @@ namespace Elog
             }
             var assemblyReader = new AssemblyReader(_config.BinariesPath, Out);
 
-            if (AggregateName.Length > 0)
+            if (AggregateName.Length > 0) // We are looking for a specific Aggregate
             {
-
                 var map = assemblyReader.GenerateMapForAggregate(AggregateName);
 
-                if (Id != Guid.Empty)
+                if (Id != Guid.Empty) // We didn't provide an EventSource Id, so we list all unique aggregates
                 {
                     await ListUniqueIdentifiers(map);
                 }
-                else
+                else // We have an event source ID, so we want to display the event log
                 {
                     await ListEventsForAggregate(map);
                 }
             }
-            else
+            else // We didn't supply an aggregate name, so we just list all of them
             {
                 var aggregates = assemblyReader.GetAllAggregates();
                 DisplayAggregateList(aggregates);
@@ -157,7 +156,7 @@ Binaries Path       : {configuration.BinariesPath}
             }
             else
             {
-                if(EventNumber >= eventLog.Count)
+                if (EventNumber >= eventLog.Count)
                 {
                     Out.DisplayError($"The Event number values for this Event Source range from 0 t0 {eventLog.Count - 1} only.\n");
                     return;
