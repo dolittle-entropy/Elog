@@ -51,8 +51,7 @@ namespace Elog
             if (savedConfigs is null)
             {
                 savedConfigs = new List<ElogConfiguration>();
-                savedConfigs.Add(config);
-                WriteConfiguration(savedConfigs);
+                savedConfigs.Add(config);                
                 Out.Write($"Configuration '{config.Name}' created.");
             }
             else if (savedConfigs.Any(c => c.Name.Equals(config.Name, StringComparison.InvariantCultureIgnoreCase)))
@@ -72,7 +71,7 @@ namespace Elog
                 savedConfigs.Add(config);
                 Out.Write($"Configuration '{config.Name}' added");
             }
-            WriteConfiguration(savedConfigs);
+            WriteConfiguration(savedConfigs);        
         }
 
         private void DeleteConfiguration()
@@ -192,6 +191,10 @@ namespace Elog
             if (File.Exists(_configurationFile))
             {
                 var fileContent = File.ReadAllText(_configurationFile);
+                if(string.IsNullOrEmpty(fileContent))
+                {
+                    return null;
+                }
                 existingConfiguration = JsonConvert.DeserializeObject<List<ElogConfiguration>>(fileContent);
             }
             return existingConfiguration;

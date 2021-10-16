@@ -2,7 +2,7 @@
   "profiles": {
     "Elog": {
       "commandName": "Project",
-      "commandLineArgs": "-a Kunde"
+      "commandLineArgs": "configure"
     }
   }
 }
