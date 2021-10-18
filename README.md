@@ -56,6 +56,16 @@ $ elog -a Customer -id 78dc3f83-a45d-4cd2-acf6-9eb9c6dcac60 -evt 3
 ```
 The example above displays the payload of event number 3 from the previous list
 
+## Selecting configuration
+
+If you want to target a different project using Elog, simply add the --configuration parameter to the command: 
+
+```bash
+$ elog -c MyConfig -a Customer -id 78dc3f83-a45d-4cd2-acf6-9eb9c6dcac60
+```
+The `-c MyConfig` is telling Elog to load the configuration named `MyConfig` 
+Note that if the configuration doesen't exist, you will get an error. 
+
 ----
 End of README
 
