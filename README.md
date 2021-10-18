@@ -3,6 +3,21 @@ Elog lets you connect your Dolittle eventsourced systems to the Dolittle runtime
 you can discover aggregates, find unique aggregate Ids (such as listing customers) as well as 
 to see all events produced by those aggregates in sequence. 
 
+## Building it
+ELog was developed using DotNet 6. You should download and install this
+prior to building it. Once done, navigate to where you have the base
+solution folder `src` and type: 
+
+```bash
+$ dotnet build -c Release 
+```
+You will then find the executable in the folder:
+
+`./Elog/bin/Release/net6.0`
+
+For simplicity, the recommendation is that you add this entire folder to 
+your `$PATH` variable. 
+
 ## Initial configuration
 In order to run, you need to configure a project for Elog. The first configuration that you
 add will become the default project. 
