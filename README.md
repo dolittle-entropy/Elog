@@ -61,10 +61,9 @@ unique customers currently in the event log as well as the event count for each
 $ elog -a Customer -id 78dc3f83-a45d-4cd2-acf6-9eb9c6dcac60
 ```
 By applying the -id of the specific customer, we will now see a list of what events that the 
-aggregate has applied to that particular customer. You will see a list of events that have 
-been applied on that Aggregate, including the date. These events are ordered and numbered. If you
-wish to see the details of a particular event, you can simply add the index number with the -evt 
-parameter: 
+aggregate has applied to that particular customer including the date. 
+
+The events are numbered. If you wish to see the actual payload of a particular event, you can add the event index number with the -evt parameter: 
 
 ```bash
 $ elog -a Customer -id 78dc3f83-a45d-4cd2-acf6-9eb9c6dcac60 -evt 3
