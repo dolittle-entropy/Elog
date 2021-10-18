@@ -1,4 +1,4 @@
-# ELog - An event logging tool for the Dolittle runtimes / SDK
+# ELog - Displays event logs from Dolittle projects
 Elog lets you connect your Dolittle eventsourced systems to the Dolittle runtime so that 
 you can discover aggregates, find unique aggregate Ids (such as listing customers) as well as 
 to see all events produced by those aggregates in sequence. 
