@@ -5,7 +5,6 @@ using McMaster.Extensions.CommandLineUtils;
 using MongoDbReading;
 using Newtonsoft.Json;
 using OutputWriting;
-using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 
 namespace Elog
@@ -84,7 +83,12 @@ namespace Elog
             }
             else
             {
-                configuration = configurations.First(c => c.Name.Equals(Configuration, StringComparison.InvariantCultureIgnoreCase));
+                configuration = configurations.FirstOrDefault(c => c.Name.Equals(Configuration, StringComparison.InvariantCultureIgnoreCase));
+                if(configuration is null)
+                {
+                    Out.DisplayError($"The configuration '{Configuration}' was not found. Aborting.");
+                    return null;
+                }
             }
             Out.Write($@"
 Configuration loaded: {configuration.Name}
@@ -170,7 +174,6 @@ Binaries Path       : {configuration.BinariesPath}
                 Out.Divider();
             }
         }
-
     }
 }
 
