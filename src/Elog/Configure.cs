@@ -117,6 +117,12 @@ namespace Elog
         private string FindSolutionNameInBinariesPath(string binariesPath)
         {
             var bits = binariesPath.Split('\\');
+            if(bits.Length == 1)
+            {
+                // Support mac/linux paths
+                bits = binariesPath.Split('/');
+            }
+
             for(int i = bits.Length - 1; i > 0; i--)
             {
                 if(bits[i].Equals("bin"))
