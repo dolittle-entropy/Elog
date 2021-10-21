@@ -5,7 +5,12 @@ using McMaster.Extensions.CommandLineUtils;
 using MongoDbReading;
 using Newtonsoft.Json;
 using OutputWriting;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Elog
 {
