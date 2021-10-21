@@ -1,4 +1,6 @@
-﻿namespace TypeMapping
+﻿using System.Collections.Generic;
+
+namespace TypeMapping
 {
     public class DolittleTypeMap
     {

@@ -1,4 +1,6 @@
-﻿namespace OutputWriting
+﻿using System;
+
+namespace OutputWriting
 {
     public class ConsoleOutputWriter : IOutputWriter
     {

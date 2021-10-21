@@ -1,5 +1,6 @@
 ﻿using Dolittle.SDK.Aggregates;
 using Dolittle.SDK.Events;
+using System;
 using System.Reflection;
 
 

@@ -1,4 +1,5 @@
 ﻿using Dolittle.SDK.Events;
+using System;
 
 namespace TypeMapping
 {

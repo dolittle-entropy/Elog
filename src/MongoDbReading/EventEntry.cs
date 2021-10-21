@@ -1,4 +1,6 @@
-﻿namespace MongoDbReading
+﻿using System;
+
+namespace MongoDbReading
 {
     public class EventEntry
     {
