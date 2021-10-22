@@ -51,8 +51,7 @@ namespace MongoDbReading
             var query = $"{{ 'Aggregate.WasAppliedByAggregate' : true, 'Aggregate.TypeId' : {wrappedId} }}";
             var filter = BsonSerializer.Deserialize<BsonDocument>(query);
 
-            // code-review: add .ConfigureAwait(false) here?
-            var allDocuments = await _collection.Find(filter).ToListAsync();
+            var allDocuments = await _collection.Find(filter).ToListAsync().ConfigureAwait(false);
 
             var completeList = new List<EventSource>();
             foreach (var document in allDocuments)
@@ -86,8 +85,7 @@ namespace MongoDbReading
             var query = $"{{ 'Aggregate.WasAppliedByAggregate' : true, 'Aggregate.TypeId' : {aggregateId}, 'Metadata.EventSource' : {eventSourceId} }}";
             var filter = BsonSerializer.Deserialize<BsonDocument>(query);
 
-            // code-review: add .ConfigureAwait(false) here?
-            var allDocuments = await _collection.Find(filter).ToListAsync();
+            var allDocuments = await _collection.Find(filter).ToListAsync().ConfigureAwait(false);
 
             var completeList = new List<EventEntry>();
             foreach (var document in allDocuments)
@@ -98,10 +96,10 @@ namespace MongoDbReading
                 completeList.Add(new EventEntry
                 {
                     Aggregate = map.Aggregate.Name,
-                    Event     = eventTypeId.Name,
-                    IsPublic  = document["Metadata"]["Public"].AsBoolean,
-                    Time      = document["Metadata"]["Occurred"].ToUniversalTime(),
-                    PayLoad   = document["Content"].ToJson()
+                    Event = eventTypeId.Name,
+                    IsPublic = document["Metadata"]["Public"].AsBoolean,
+                    Time = document["Metadata"]["Occurred"].ToUniversalTime(),
+                    PayLoad = document["Content"].ToJson()
                 });
             }
             return completeList;

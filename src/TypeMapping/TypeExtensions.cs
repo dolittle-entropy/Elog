@@ -25,7 +25,7 @@ namespace TypeMapping
             {
                 return new DolittleAggregate
                 {
-                    Id   = attribute.Id,
+                    Id = attribute.Id,
                     Name = type.Name
                 };
             }

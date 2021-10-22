@@ -23,7 +23,7 @@ namespace Elog
 
         readonly string _configurationFile;
 
-        readonly IOutputWriter Out = new ConsoleOutputWriter();
+        readonly IOutputWriter _out = new ConsoleOutputWriter();
 
         public Configure()
         {
@@ -31,6 +31,8 @@ namespace Elog
             _configurationFile = Path.Combine(applicationFolder, ConfigurationFileName);
         }
 
+        // warnings that the parameter is not used and can be removed
+#pragma warning disable RCS1163, IDE0060
         public void OnExecute(CommandLineApplication app)
         {
             if (List)
@@ -45,8 +47,8 @@ namespace Elog
                 return;
             }
 
-            Out.Write("Running the configuration wizard for ELog");
-            Out.Divider();
+            _out.Write("Running the configuration wizard for ELog");
+            _out.Divider();
 
             var config = PromptForConfiguration();
             var savedConfigs = LoadConfiguration();
@@ -57,27 +59,28 @@ namespace Elog
                 {
                     config
                 };
-                Out.Write($"Configuration '{config.Name}' created.");
+                _out.Write($"Configuration '{config.Name}' created.");
             }
             else if (savedConfigs.Any(c => c.Name.Equals(config.Name, StringComparison.InvariantCultureIgnoreCase)))
             {
-                if (!Out.Confirm($"A configuration named {config.Name} already exists. Overwrite?"))
+                if (!_out.Confirm($"A configuration named {config.Name} already exists. Overwrite?"))
                 {
-                    Out.Write("Operation aborted");
+                    _out.Write("Operation aborted");
                     return;
                 }
                 var oldConfig = savedConfigs.First(c => c.Name.Equals(config.Name, StringComparison.InvariantCultureIgnoreCase));
                 savedConfigs.Remove(oldConfig);
                 savedConfigs.Add(config);
-                Out.Write($"Configuration '{config.Name}' updated");
+                _out.Write($"Configuration '{config.Name}' updated");
             }
             else
             {
                 savedConfigs.Add(config);
-                Out.Write($"Configuration '{config.Name}' added");
+                _out.Write($"Configuration '{config.Name}' added");
             }
             WriteConfiguration(savedConfigs);
         }
+#pragma warning restore RCS1163, IDE0060
 
         private void DeleteConfiguration()
         {
@@ -90,14 +93,14 @@ namespace Elog
             }
             else
             {
-                Out.DisplayError($"Could not find a configuration named '{Delete}'");
+                _out.DisplayError($"Could not find a configuration named '{Delete}'");
             }
         }
 
         private void DisplayConfigurations()
         {
-            Out.Write("Elog - List Configurations\n");
-            Out.Write($"Configuration loaded from: {_configurationFile}\n");
+            _out.Write("Elog - List Configurations\n");
+            _out.Write($"Configuration loaded from: {_configurationFile}\n");
 
             var savedConfigs = LoadConfiguration();
             var consoleTable = new ConsoleTable("Name", "Server", "Port", "Database", "Solution");
@@ -111,8 +114,8 @@ namespace Elog
                     FindSolutionNameInBinariesPath(config.BinariesPath));
             }
             consoleTable.Write(Format.Minimal);
-            Out.Divider();
-            Out.Write($"{savedConfigs.Count} Configurations found\n");
+            _out.Divider();
+            _out.Write($"{savedConfigs.Count} Configurations found\n");
         }
 
         static string FindSolutionNameInBinariesPath(string binariesPath)
@@ -140,7 +143,7 @@ namespace Elog
             var filePath = Path.Combine(config.BinariesPath, KeyDolittleSDKFile);
             if (!File.Exists(filePath))
             {
-                Out.DisplayError($"The folder '{config.BinariesPath}' does not contain the key file '{KeyDolittleSDKFile}'. Configuration fails!");
+                _out.DisplayError($"The folder '{config.BinariesPath}' does not contain the key file '{KeyDolittleSDKFile}'. Configuration fails!");
                 return false;
             }
 
@@ -148,21 +151,21 @@ namespace Elog
                 config.MongoConfig.MongoServer,
                 config.MongoConfig.Port,
                 config.MongoConfig.MongoDB,
-                Out);
+                _out);
 
             return eventStoreReader.ConnectionWorks();
         }
 
         private ElogConfiguration PromptForConfiguration()
         {
-            Out.Write("Hit [ENTER] to accept default values or edit where necessary:");
+            _out.Write("Hit [ENTER] to accept default values or edit where necessary:");
 
-            var configName     = Out.AskForValue("Give your config a name         : ", "Default");
-            var mongoServer    = Out.AskForValue("MongoDB ServerInstance          : ", "localhost");
-            var mongoDB        = Out.AskForValue("MongoDB Database name           : ", "event_store");
-            var mongoPort      = Out.AskForValue("Port to use                     : ", "27017");
-            var pathToBinaries = Out.AskForValue("Complete path to binaries folder: ", "C:\\dev");
-            Out.Divider();
+            var configName = _out.AskForValue("Give your config a name         : ", "Default");
+            var mongoServer = _out.AskForValue("MongoDB ServerInstance          : ", "localhost");
+            var mongoDB = _out.AskForValue("MongoDB Database name           : ", "event_store");
+            var mongoPort = _out.AskForValue("Port to use                     : ", "27017");
+            var pathToBinaries = _out.AskForValue("Complete path to binaries folder: ", "C:\\dev");
+            _out.Divider();
 
             if (int.TryParse(mongoPort, out var port))
             {
@@ -180,14 +183,14 @@ namespace Elog
 
                 if (!TestConfiguration(config))
                 {
-                    Out.DisplayError("Configuration is invalid. Aborting");
+                    _out.DisplayError("Configuration is invalid. Aborting");
                     return null;
                 }
                 return config;
             }
             else
             {
-                Out.DisplayError("The Port for MongoDB is not a valid number. Configuration was not saved");
+                _out.DisplayError("The Port for MongoDB is not a valid number. Configuration was not saved");
             }
             return null;
         }
@@ -214,7 +217,7 @@ namespace Elog
             if (serialized.Length > 0)
             {
                 File.WriteAllText(_configurationFile, serialized);
-                Out.Write($"Configuration saved to: {_configurationFile}");
+                _out.Write($"Configuration saved to: {_configurationFile}");
             }
         }
     }

@@ -18,7 +18,7 @@ namespace Elog
     [Subcommand(typeof(Configure))]
     public class Program
     {
-        static readonly IOutputWriter Out = new ConsoleOutputWriter();
+        static readonly IOutputWriter output = new ConsoleOutputWriter();
 
         ElogConfiguration _config;
 
@@ -27,6 +27,8 @@ namespace Elog
             return CommandLineApplication.ExecuteAsync<Program>(args);
         }
 
+        // warnings that the parameter is not used and can be removed
+#pragma warning disable RCS1163, IDE0060
         public async Task OnExecute(CommandLineApplication app)
         {
             var stopwatch = Stopwatch.StartNew();
@@ -35,20 +37,19 @@ namespace Elog
             {
                 return;
             }
-            var assemblyReader = new AssemblyReader(_config.BinariesPath, Out);
+            var assemblyReader = new AssemblyReader(_config.BinariesPath, output);
 
             if (AggregateName.Length > 0) // We are looking for a specific Aggregate
             {
                 var map = assemblyReader.GenerateMapForAggregate(AggregateName);
 
-                // code-review: add .ConfigureAwait(false) to these awaits?
                 if (Id != Guid.Empty) // We didn't provide an EventSource Id, so we list all unique aggregates
                 {
-                    await ListUniqueIdentifiers(map);
+                    await ListUniqueIdentifiers(map).ConfigureAwait(false);
                 }
                 else // We have an event source ID, so we want to display the event log
                 {
-                    await ListEventsForAggregate(map);
+                    await ListEventsForAggregate(map).ConfigureAwait(false);
                 }
             }
             else // We didn't supply an aggregate name, so we just list all of them
@@ -56,8 +57,9 @@ namespace Elog
                 var aggregates = assemblyReader.GetAllAggregates();
                 DisplayAggregateList(aggregates);
             }
-            Out.Write($"Program finished in {stopwatch.ElapsedMilliseconds:### ###.0}ms");
+            output.Write($"Program finished in {stopwatch.ElapsedMilliseconds:### ###.0}ms");
         }
+#pragma warning restore RCS1163, IDE0060
 
         [Option(Description = "Name of the aggregate to inspect, i.e. 'Product'")]
         public string AggregateName { get; set; } = string.Empty;
@@ -77,7 +79,7 @@ namespace Elog
             var configurationFile = Path.Combine(configurationFolder, ElogConfiguration.ConfigurationFileName);
             if (!File.Exists(configurationFile))
             {
-                Out.DisplayError("No configuration found! Run 'elog.exe configure' to create a configuration.\nA wizard will guide you through the values required");
+                output.DisplayError("No configuration found! Run 'elog.exe configure' to create a configuration.\nA wizard will guide you through the values required");
                 return null;
             }
             var fileContents = File.ReadAllText(configurationFile);
@@ -92,11 +94,11 @@ namespace Elog
                 configuration = configurations.Find(c => c.Name.Equals(Configuration, StringComparison.InvariantCultureIgnoreCase));
                 if (configuration is null)
                 {
-                    Out.DisplayError($"The configuration '{Configuration}' was not found. Aborting.");
+                    output.DisplayError($"The configuration '{Configuration}' was not found. Aborting.");
                     return null;
                 }
             }
-            Out.Write($@"
+            output.Write($@"
 Configuration loaded: {configuration.Name}
 Mongo Server        : {configuration.MongoConfig.MongoServer}:{configuration.MongoConfig.Port}
 Mongo Database      : {configuration.MongoConfig.MongoDB}
@@ -113,8 +115,8 @@ Binaries Path       : {configuration.BinariesPath}
                 table.AddRow(entry.Name, entry.Id);
             }
             table.Write(Format.Minimal);
-            Out.Divider();
-            Out.Write($"{aggregates.Count()} identified Aggregates. Add '-a <aggregatename>' to see business entities\n");
+            output.Divider();
+            output.Write($"{aggregates.Count()} identified Aggregates. Add '-a <aggregatename>' to see business entities\n");
         }
 
         async Task ListEventsForAggregate(TypeMapping.DolittleTypeMap map)
@@ -123,20 +125,19 @@ Binaries Path       : {configuration.BinariesPath}
                 _config.MongoConfig.MongoServer,
                 _config.MongoConfig.Port,
                 _config.MongoConfig.MongoDB,
-                Out);
+                output);
 
-            // code-review: add .ConfigureAwait(false) here?
-            var uniqueEventSources = await reader.GetUniqueEventSources(map);
+            var uniqueEventSources = await reader.GetUniqueEventSources(map).ConfigureAwait(false);
 
             var table = new ConsoleTable("Aggregate", "Id", "Events");
-            Out.Divider();
+            output.Divider();
             foreach (var uniqueEventSource in uniqueEventSources)
             {
                 table.AddRow(uniqueEventSource.Aggregate, uniqueEventSource.Id, uniqueEventSource.EventCount);
             }
             table.Write(Format.Minimal);
-            Out.Divider();
-            Out.Write($"{uniqueEventSources.Count()} unique Identities found for {map.Aggregate.Name}. \nAdd '-id <id>' to see their event log.\n");
+            output.Divider();
+            output.Write($"{uniqueEventSources.Count()} unique Identities found for {map.Aggregate.Name}. \nAdd '-id <id>' to see their event log.\n");
         }
 
         async Task ListUniqueIdentifiers(TypeMapping.DolittleTypeMap map)
@@ -145,15 +146,14 @@ Binaries Path       : {configuration.BinariesPath}
                 _config.MongoConfig.MongoServer,
                 _config.MongoConfig.Port,
                 _config.MongoConfig.MongoDB,
-                Out);
+                output);
 
-            // code-review: add .ConfigureAwait(false) here?
-            var eventLog = (await reader.GetEventLog(map, Id)).ToList();
+            var eventLog = (await reader.GetEventLog(map, Id).ConfigureAwait(false)).ToList();
 
             if (EventNumber <= -1)
             {
-                Out.Write($"\nEvent history for '{map.Aggregate.Name}' Id:{Id}");
-                Out.Divider();
+                output.Write($"\nEvent history for '{map.Aggregate.Name}' Id:{Id}");
+                output.Divider();
                 var table = new ConsoleTable("No.", "Aggregate", "Event", "Time");
                 var counter = 0;
                 foreach (var entry in eventLog)
@@ -163,24 +163,24 @@ Binaries Path       : {configuration.BinariesPath}
                     table.AddRow(counter++, entry.Aggregate, eventName, entry.Time.ToString("dddd dd.MMMyyyy HH:mm:ss.ffff"));
                 }
                 table.Write(Format.Minimal);
-                Out.Divider();
-                Out.Write("* = Public Event");
-                Out.Write("Add '-evt <#>' to see the payload details of that event\n");
+                output.Divider();
+                output.Write("* = Public Event");
+                output.Write("Add '-evt <#>' to see the payload details of that event\n");
             }
             else
             {
                 if (EventNumber >= eventLog.Count)
                 {
-                    Out.DisplayError($"The Event number values for this Event Source range from 0 t0 {eventLog.Count - 1} only.\n");
+                    output.DisplayError($"The Event number values for this Event Source range from 0 t0 {eventLog.Count - 1} only.\n");
                     return;
                 }
                 var rightEvent = eventLog.ToList()[EventNumber];
                 var json = JsonConvert.DeserializeObject(rightEvent.PayLoad);
-                Out.Write($"Displaying Payload #{EventNumber} for aggregate {map.Aggregate.Name}:{Id}");
-                Out.Write($"Event {EventNumber}: '{rightEvent.Event}' on {rightEvent.Time:dddd dd.MMMyyyy HH:mm:ss.ffff}");
-                Out.Divider();
-                Out.Write(json?.ToString() ?? "");
-                Out.Divider();
+                output.Write($"Displaying Payload #{EventNumber} for aggregate {map.Aggregate.Name}:{Id}");
+                output.Write($"Event {EventNumber}: '{rightEvent.Event}' on {rightEvent.Time:dddd dd.MMMyyyy HH:mm:ss.ffff}");
+                output.Divider();
+                output.Write(json?.ToString() ?? "");
+                output.Divider();
             }
         }
     }
