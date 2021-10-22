@@ -18,7 +18,7 @@ namespace Elog
     [Subcommand(typeof(Configure))]
     public class Program
     {
-        static IOutputWriter Out = new ConsoleOutputWriter();
+        static readonly IOutputWriter Out = new ConsoleOutputWriter();
 
         ElogConfiguration _config;
 
@@ -41,6 +41,7 @@ namespace Elog
             {
                 var map = assemblyReader.GenerateMapForAggregate(AggregateName);
 
+                // code-review: add .ConfigureAwait(false) to these awaits?
                 if (Id != Guid.Empty) // We didn't provide an EventSource Id, so we list all unique aggregates
                 {
                     await ListUniqueIdentifiers(map);
@@ -59,7 +60,7 @@ namespace Elog
         }
 
         [Option(Description = "Name of the aggregate to inspect, i.e. 'Product'")]
-        public string AggregateName { get; set; } = String.Empty;
+        public string AggregateName { get; set; } = string.Empty;
 
         [Option(Description = "Identity of the aggregate for which you want to see the event log", ShortName = "id")]
         public Guid Id { get; set; } = Guid.Empty;
@@ -84,12 +85,12 @@ namespace Elog
             ElogConfiguration configuration = null;
             if (Configuration.Length == 0)
             {
-                configuration = configurations.First();
+                configuration = configurations[0];
             }
             else
             {
-                configuration = configurations.FirstOrDefault(c => c.Name.Equals(Configuration, StringComparison.InvariantCultureIgnoreCase));
-                if(configuration is null)
+                configuration = configurations.Find(c => c.Name.Equals(Configuration, StringComparison.InvariantCultureIgnoreCase));
+                if (configuration is null)
                 {
                     Out.DisplayError($"The configuration '{Configuration}' was not found. Aborting.");
                     return null;
@@ -104,13 +105,13 @@ Binaries Path       : {configuration.BinariesPath}
             return configuration;
         }
 
-        void DisplayAggregateList(IEnumerable<TypeMapping.DolittleAggregate> aggregates)
+        static void DisplayAggregateList(IEnumerable<TypeMapping.DolittleAggregate> aggregates)
         {
             var table = new ConsoleTable("Aggregate", "Id");
             foreach (var entry in aggregates)
             {
                 table.AddRow(entry.Name, entry.Id);
-            };
+            }
             table.Write(Format.Minimal);
             Out.Divider();
             Out.Write($"{aggregates.Count()} identified Aggregates. Add '-a <aggregatename>' to see business entities\n");
@@ -124,13 +125,15 @@ Binaries Path       : {configuration.BinariesPath}
                 _config.MongoConfig.MongoDB,
                 Out);
 
+            // code-review: add .ConfigureAwait(false) here?
             var uniqueEventSources = await reader.GetUniqueEventSources(map);
+
             var table = new ConsoleTable("Aggregate", "Id", "Events");
             Out.Divider();
             foreach (var uniqueEventSource in uniqueEventSources)
             {
                 table.AddRow(uniqueEventSource.Aggregate, uniqueEventSource.Id, uniqueEventSource.EventCount);
-            };
+            }
             table.Write(Format.Minimal);
             Out.Divider();
             Out.Write($"{uniqueEventSources.Count()} unique Identities found for {map.Aggregate.Name}. \nAdd '-id <id>' to see their event log.\n");
@@ -144,6 +147,7 @@ Binaries Path       : {configuration.BinariesPath}
                 _config.MongoConfig.MongoDB,
                 Out);
 
+            // code-review: add .ConfigureAwait(false) here?
             var eventLog = (await reader.GetEventLog(map, Id)).ToList();
 
             if (EventNumber <= -1)
@@ -157,7 +161,7 @@ Binaries Path       : {configuration.BinariesPath}
                     var eventName = entry.Event + (entry.IsPublic ? "*" : "");
 
                     table.AddRow(counter++, entry.Aggregate, eventName, entry.Time.ToString("dddd dd.MMMyyyy HH:mm:ss.ffff"));
-                };
+                }
                 table.Write(Format.Minimal);
                 Out.Divider();
                 Out.Write("* = Public Event");
@@ -173,7 +177,7 @@ Binaries Path       : {configuration.BinariesPath}
                 var rightEvent = eventLog.ToList()[EventNumber];
                 var json = JsonConvert.DeserializeObject(rightEvent.PayLoad);
                 Out.Write($"Displaying Payload #{EventNumber} for aggregate {map.Aggregate.Name}:{Id}");
-                Out.Write($"Event {EventNumber}: '{rightEvent.Event}' on {rightEvent.Time.ToString("dddd dd.MMMyyyy HH:mm:ss.ffff")}");
+                Out.Write($"Event {EventNumber}: '{rightEvent.Event}' on {rightEvent.Time:dddd dd.MMMyyyy HH:mm:ss.ffff}");
                 Out.Divider();
                 Out.Write(json?.ToString() ?? "");
                 Out.Divider();

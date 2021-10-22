@@ -2,7 +2,7 @@
 {
     public interface IOutputWriter
     {
-        void Write(string message);        
+        void Write(string message);
 
         string AskForValue(string question, string defaultAnswer);
 

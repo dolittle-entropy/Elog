@@ -19,7 +19,7 @@ namespace Elog
         [Option(Description = "Deletes the first configuration that matches the name provided")]
         public string Delete { get; set; }
 
-        const string configurationFileName = "elog.config";
+        const string ConfigurationFileName = "elog.config";
 
         readonly string _configurationFile;
 
@@ -28,7 +28,7 @@ namespace Elog
         public Configure()
         {
             var applicationFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            _configurationFile = Path.Combine(applicationFolder, configurationFileName);
+            _configurationFile = Path.Combine(applicationFolder, ConfigurationFileName);
         }
 
         public void OnExecute(CommandLineApplication app)
@@ -45,7 +45,6 @@ namespace Elog
                 return;
             }
 
-
             Out.Write("Running the configuration wizard for ELog");
             Out.Divider();
 
@@ -54,8 +53,10 @@ namespace Elog
 
             if (savedConfigs is null)
             {
-                savedConfigs = new List<ElogConfiguration>();
-                savedConfigs.Add(config);                
+                savedConfigs = new List<ElogConfiguration>
+                {
+                    config
+                };
                 Out.Write($"Configuration '{config.Name}' created.");
             }
             else if (savedConfigs.Any(c => c.Name.Equals(config.Name, StringComparison.InvariantCultureIgnoreCase)))
@@ -75,13 +76,13 @@ namespace Elog
                 savedConfigs.Add(config);
                 Out.Write($"Configuration '{config.Name}' added");
             }
-            WriteConfiguration(savedConfigs);        
+            WriteConfiguration(savedConfigs);
         }
 
         private void DeleteConfiguration()
         {
             var configurations = LoadConfiguration();
-            var configurationToDelete = configurations.FirstOrDefault(c => c.Name.Equals(Delete, StringComparison.InvariantCultureIgnoreCase));
+            var configurationToDelete = configurations.Find(c => c.Name.Equals(Delete, StringComparison.InvariantCultureIgnoreCase));
             if (configurationToDelete is { })
             {
                 configurations.Remove(configurationToDelete);
@@ -95,37 +96,37 @@ namespace Elog
 
         private void DisplayConfigurations()
         {
-            Out.Write("Elog - List Configurations\n");            
+            Out.Write("Elog - List Configurations\n");
             Out.Write($"Configuration loaded from: {_configurationFile}\n");
-            
+
             var savedConfigs = LoadConfiguration();
             var consoleTable = new ConsoleTable("Name", "Server", "Port", "Database", "Solution");
             foreach (var config in savedConfigs)
             {
                 consoleTable.AddRow(
-                    config.Name, 
-                    config.MongoConfig.MongoServer, 
+                    config.Name,
+                    config.MongoConfig.MongoServer,
                     config.MongoConfig.Port,
                     config.MongoConfig.MongoDB,
-                    FindSolutionNameInBinariesPath(config.BinariesPath));                
+                    FindSolutionNameInBinariesPath(config.BinariesPath));
             }
             consoleTable.Write(Format.Minimal);
             Out.Divider();
             Out.Write($"{savedConfigs.Count} Configurations found\n");
         }
 
-        private string FindSolutionNameInBinariesPath(string binariesPath)
+        static string FindSolutionNameInBinariesPath(string binariesPath)
         {
             var bits = binariesPath.Split('\\');
-            if(bits.Length == 1)
+            if (bits.Length == 1)
             {
                 // Support mac/linux paths
                 bits = binariesPath.Split('/');
             }
 
-            for(int i = bits.Length - 1; i > 0; i--)
+            for (var i = bits.Length - 1; i > 0; i--)
             {
-                if(bits[i].Equals("bin"))
+                if (bits[i].Equals("bin"))
                 {
                     return bits[i - 2];
                 }
@@ -133,13 +134,13 @@ namespace Elog
             return string.Empty;
         }
 
-        private bool TestConfiguration(ElogConfiguration config)
+        bool TestConfiguration(ElogConfiguration config)
         {
-            const string keyDolittleSDKFile = "Dolittle.SDK.Aggregates.dll";
-            var filePath = Path.Combine(config.BinariesPath, keyDolittleSDKFile);
+            const string KeyDolittleSDKFile = "Dolittle.SDK.Aggregates.dll";
+            var filePath = Path.Combine(config.BinariesPath, KeyDolittleSDKFile);
             if (!File.Exists(filePath))
             {
-                Out.DisplayError($"The folder '{config.BinariesPath}' does not contain the key file '{keyDolittleSDKFile}'. Configuration fails!");
+                Out.DisplayError($"The folder '{config.BinariesPath}' does not contain the key file '{KeyDolittleSDKFile}'. Configuration fails!");
                 return false;
             }
 
@@ -149,11 +150,7 @@ namespace Elog
                 config.MongoConfig.MongoDB,
                 Out);
 
-            if (!eventStoreReader.ConnectionWorks())
-            {
-                return false;
-            }
-            return true;
+            return eventStoreReader.ConnectionWorks();
         }
 
         private ElogConfiguration PromptForConfiguration()
@@ -167,11 +164,11 @@ namespace Elog
             var pathToBinaries = Out.AskForValue("Complete path to binaries folder: ", "C:\\dev");
             Out.Divider();
 
-            if (int.TryParse(mongoPort, out int port))
+            if (int.TryParse(mongoPort, out var port))
             {
                 var config = new ElogConfiguration
                 {
-                    Name = configName,                    
+                    Name = configName,
                     BinariesPath = pathToBinaries,
                     MongoConfig = new MongoConfig
                     {
@@ -194,7 +191,7 @@ namespace Elog
             }
             return null;
         }
-       
+
         private List<ElogConfiguration> LoadConfiguration()
         {
             List<ElogConfiguration> existingConfiguration = null;
@@ -202,7 +199,7 @@ namespace Elog
             if (File.Exists(_configurationFile))
             {
                 var fileContent = File.ReadAllText(_configurationFile);
-                if(string.IsNullOrEmpty(fileContent))
+                if (string.IsNullOrEmpty(fileContent))
                 {
                     return null;
                 }

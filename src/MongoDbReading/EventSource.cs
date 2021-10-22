@@ -13,6 +13,5 @@ namespace MongoDbReading
         public Guid Id { get; set; }
 
         public int EventCount { get; set; }
-
     }
 }

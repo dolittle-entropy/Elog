@@ -3,28 +3,25 @@ using Dolittle.SDK.Events;
 using System;
 using System.Reflection;
 
-
 namespace TypeMapping
 {
     public static class TypeExtensions
     {
         public static DolittleAggregate AsDolittleAggregate(this Type type, Type aggregateRootType)
         {
-
-            if (!type.IsClass )
+            if (!type.IsClass)
             {
                 return null;
             }
 
-            var typeName = type.FullName;
-            if(!aggregateRootType.IsAssignableFrom(type))
+            if (!aggregateRootType.IsAssignableFrom(type))
             {
                 return null;
             }
 
             var attribute = type.GetCustomAttribute<AggregateRootAttribute>();
-            
-            if(attribute is { })
+
+            if (attribute is { })
             {
                 return new DolittleAggregate
                 {
