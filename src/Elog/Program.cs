@@ -8,6 +8,7 @@ using OutputWriting;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -43,7 +44,7 @@ namespace Elog
             {
                 var map = assemblyReader.GenerateMapForAggregate(AggregateName);
 
-                if (Id != Guid.Empty) // We didn't provide an EventSource Id, so we list all unique aggregates
+                if (Id != Guid.Empty.ToString()) // We didn't provide an EventSource Id, so we list all unique aggregates
                 {
                     await ListUniqueIdentifiers(map).ConfigureAwait(false);
                 }
@@ -65,7 +66,7 @@ namespace Elog
         public string AggregateName { get; set; } = string.Empty;
 
         [Option(Description = "Identity of the aggregate for which you want to see the event log", ShortName = "id")]
-        public Guid Id { get; set; } = Guid.Empty;
+        public string Id { get; set; } = Guid.Empty.ToString();
 
         [Option(Description = "Display the payload of the event# ", ShortName = "evt")]
         public int EventNumber { get; set; } = -1;
@@ -127,13 +128,19 @@ Binaries Path       : {configuration.BinariesPath}
                 _config.MongoConfig.MongoDB,
                 output);
 
-            var uniqueEventSources = await reader.GetUniqueEventSources(map).ConfigureAwait(false);
+            var uniqueEventSources = await reader
+                .GetUniqueEventSources(map)
+                .ConfigureAwait(false);
 
             var table = new ConsoleTable("Aggregate", "Id", "Events");
             output.Divider();
             foreach (var uniqueEventSource in uniqueEventSources)
             {
-                table.AddRow(uniqueEventSource.Aggregate, uniqueEventSource.Id, uniqueEventSource.EventCount);
+                table.AddRow(
+                    uniqueEventSource.Aggregate,
+                    uniqueEventSource.Id,
+                    uniqueEventSource.EventCount
+                );
             }
             table.Write(Format.Minimal);
             output.Divider();
@@ -148,11 +155,43 @@ Binaries Path       : {configuration.BinariesPath}
                 _config.MongoConfig.MongoDB,
                 output);
 
-            var eventLog = (await reader.GetEventLog(map, Id).ConfigureAwait(false)).ToList();
+            Guid guidId;
+            if (Guid.TryParse(Id, out var parsedEventSourceId))
+            {
+                guidId = parsedEventSourceId;
+            }
+            else
+            {
+                var eventSources = await reader
+                    .GetUniqueEventSources(map)
+                    .ConfigureAwait(false);
+
+                var matches = eventSources.Where(source => source.Id.ToString().StartsWith(Id));
+
+                if (!matches.Any())
+                {
+                    output.Write(
+                        $"No event-sources-ids for the aggregate {map.Aggregate.Name} starts with {Id}."
+                    );
+                    return;
+                }
+                if (matches.Count() > 1)
+                {
+                    output.Write(
+                        $"Two or more event-sources for the aggregate {map.Aggregate.Name} starts with {Id}"
+                    );
+                    return;
+                }
+
+                guidId = matches.First().Id;
+                output.Write($"Found single match for \"{Id}\": {guidId}{Environment.NewLine}");
+            }
+
+            var eventLog = (await reader.GetEventLog(map, guidId).ConfigureAwait(false)).ToList();
 
             if (EventNumber <= -1)
             {
-                output.Write($"\nEvent history for '{map.Aggregate.Name}' Id:{Id}");
+                output.Write($"\nEvent history for '{map.Aggregate.Name}' Id: {guidId}");
                 output.Divider();
                 var table = new ConsoleTable("No.", "Aggregate", "Event", "Time");
                 var counter = 0;
