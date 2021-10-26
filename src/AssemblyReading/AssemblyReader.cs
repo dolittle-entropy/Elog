@@ -10,7 +10,26 @@ namespace AssemblyReading
 {
     public class AssemblyReader
     {
-        static string[] skipDllsWith = new[] { "Microsoft.", "DnsClient.", "Serilog.", "Newtonsoft.", "SwashBuckle.", "System.", "HotChocolate.", "GraphQL.", "Grpc.", "Dolittle.", "Google.", "AutoFac.", "MongoDB.", "Polly.", "AutofacSerilogIntegration.", "SharpCompress.", "libwkhtmltox." };
+        static readonly string[] skipDllsWith = new[]
+        {
+            "Microsoft.",
+            "DnsClient.",
+            "Serilog.",
+            "Newtonsoft.",
+            "SwashBuckle.",
+            "System.",
+            "HotChocolate.",
+            "GraphQL.",
+            "Grpc.",
+            "Dolittle.",
+            "Google.",
+            "AutoFac.",
+            "MongoDB.",
+            "Polly.",
+            "AutofacSerilogIntegration.",
+            "SharpCompress.",
+            "libwkhtmltox."
+        };
         readonly string _assemblyFolder;
 
         IOutputWriter Out { get; }
@@ -24,7 +43,7 @@ namespace AssemblyReading
         public DolittleTypeMap GenerateMapForAggregate(string aggregateName)
         {
             var aggregateRootType = FindAndIdentifyAggregateRootType();
-            if(aggregateRootType is null)
+            if (aggregateRootType is null)
             {
                 Out.DisplayError("Unable to find aggregate root type, must abort");
                 return null;
@@ -32,34 +51,34 @@ namespace AssemblyReading
             var dllFiles = LoadDllFiles();
             var typeMap = new DolittleTypeMap();
 
-            foreach(var dllFile in dllFiles)
+            foreach (var dllFile in dllFiles)
             {
                 Type[] types;
                 try
                 {
-                   types = Assembly.LoadFrom(dllFile).GetTypes();                    
+                    types = Assembly.LoadFrom(dllFile).GetTypes();
                 }
                 catch
                 {
                     continue;
                 }
 
-                foreach(var type in types)
+                foreach (var type in types)
                 {
-                    if(type.AsDolittleAggregate(aggregateRootType) is { } dolittleAggregate)
+                    if (type.AsDolittleAggregate(aggregateRootType) is { } dolittleAggregate)
                     {
-                        if(dolittleAggregate.Name.Equals(aggregateName, StringComparison.InvariantCultureIgnoreCase))
-                        {                            
+                        if (dolittleAggregate.Name.Equals(aggregateName, StringComparison.InvariantCultureIgnoreCase))
+                        {
                             typeMap.Aggregate = dolittleAggregate;
                         }
                     }
-                    else if(type.AsDolittleEvent() is { } dolittleEvent)
-                    {                        
+                    else if (type.AsDolittleEvent() is { } dolittleEvent)
+                    {
                         typeMap.Events.Add(dolittleEvent);
                     }
-                }            
+                }
             }
-            if(typeMap.Aggregate is { })
+            if (typeMap.Aggregate is { })
             {
                 Out.Write($"Aggregate '{typeMap.Aggregate.Name}', {typeMap.Aggregate.Id}.\nEventTypes found in binaries folder: {typeMap.Events.Count}");
             }
@@ -103,10 +122,10 @@ namespace AssemblyReading
 
         List<string> LoadDllFiles()
         {
-            var dllFiles  = Directory.GetFiles(_assemblyFolder, "*.dll");
+            var dllFiles = Directory.GetFiles(_assemblyFolder, "*.dll");
             var finalList = new List<string>();
 
-            foreach(var dllFile in dllFiles)
+            foreach (var dllFile in dllFiles)
             {
                 if (!skipDllsWith.Any(name => dllFile.Contains(name, StringComparison.InvariantCultureIgnoreCase)))
                 {
@@ -118,12 +137,12 @@ namespace AssemblyReading
 
         private Type FindAndIdentifyAggregateRootType()
         {
-            const string expectedAssemblyName = "Dolittle.SDK.Aggregates.dll";
+            const string ExpectedAssemblyName = "Dolittle.SDK.Aggregates.dll";
 
-            var assembly = Assembly.LoadFrom(Path.Combine(_assemblyFolder, expectedAssemblyName));
-            if(assembly is { })
+            var assembly = Assembly.LoadFrom(Path.Combine(_assemblyFolder, ExpectedAssemblyName));
+            if (assembly is { })
             {
-                return assembly.GetTypes().FirstOrDefault(t => t.Name.Equals("AggregateRoot"));
+                return Array.Find(assembly.GetTypes(), t => t.Name.Equals("AggregateRoot"));
             }
             return null;
         }

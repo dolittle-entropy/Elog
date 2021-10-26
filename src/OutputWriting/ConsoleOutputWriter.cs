@@ -22,7 +22,6 @@ namespace OutputWriting
             {
                 Console.SetCursorPosition(question.Length, top - 1);
                 key = Console.ReadKey();
-
             }
 
             if (key.Key == ConsoleKey.Enter)
@@ -55,12 +54,8 @@ namespace OutputWriting
         {
             Console.Write($"{message}\nPress [ENTER] or 'Y' to confirm. Any other key cancels");
             var readKey = Console.ReadKey();
-            
-            if (!readKey.Key.Equals(ConsoleKey.Enter) && !readKey.Key.Equals(ConsoleKey.Y))
-            {
-                return false;
-            }
-            return true;
+
+            return readKey.Key.Equals(ConsoleKey.Enter) || readKey.Key.Equals(ConsoleKey.Y);
         }
 
         public void Write(string message)

@@ -7,6 +7,5 @@
         public string MongoDB { get; set; }
 
         public int Port { get; set; }
-
     }
 }
