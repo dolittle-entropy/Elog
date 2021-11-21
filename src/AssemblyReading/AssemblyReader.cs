@@ -52,7 +52,7 @@ namespace AssemblyReading
             var typeMap = new DolittleTypeMap();
 
             foreach (var dllFile in dllFiles)
-            {
+            {                
                 Type[] types;
                 try
                 {
@@ -65,6 +65,11 @@ namespace AssemblyReading
 
                 foreach (var type in types)
                 {
+                    var typeName = type.Name;
+                    if(typeName.Length > 0)
+                    {
+
+                    }
                     if (type.AsDolittleAggregate(aggregateRootType) is { } dolittleAggregate)
                     {
                         if (dolittleAggregate.Name.Equals(aggregateName, StringComparison.InvariantCultureIgnoreCase))
@@ -73,8 +78,12 @@ namespace AssemblyReading
                         }
                     }
                     else if (type.AsDolittleEvent() is { } dolittleEvent)
-                    {
+                    {                        
                         typeMap.Events.Add(dolittleEvent);
+                    }
+                    else if( type.AsDolittleProjection() is { } dolittleProjection)
+                    {
+                        typeMap.Events.Add(dolittleProjection);
                     }
                 }
             }

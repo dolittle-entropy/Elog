@@ -19,7 +19,7 @@
     <NeutralLanguage>en</NeutralLanguage>
     <Platforms>AnyCPU;x86;x64</Platforms>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>This is the initial release of Elog</PackageReleaseNotes>
+    <PackageReleaseNotes>Elog following the SDK version and is now supporting Dolitle.SDK 12.0.0 only</PackageReleaseNotes>
     <PackageId>Dolittle.Elog</PackageId>
   </PropertyGroup>
 

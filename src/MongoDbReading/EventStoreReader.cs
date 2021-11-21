@@ -96,7 +96,7 @@ namespace MongoDbReading
                 completeList.Add(new EventEntry
                 {
                     Aggregate = map.Aggregate.Name,
-                    Event = eventTypeId.Name,
+                    Event = eventTypeId?.Name ?? "Unknown type",
                     IsPublic = document["Metadata"]["Public"].AsBoolean,
                     Time = document["Metadata"]["Occurred"].ToUniversalTime(),
                     PayLoad = document["Content"].ToJson()

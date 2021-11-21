@@ -1,5 +1,6 @@
 ﻿using Dolittle.SDK.Aggregates;
 using Dolittle.SDK.Events;
+using Dolittle.SDK.Projections;
 using System;
 using System.Reflection;
 
@@ -38,6 +39,30 @@ namespace TypeMapping
 
             }
             return null;
+        }
+
+        public static DolittleEvent AsDolittleProjection(this Type type)
+        {
+            if (!type.IsClass)
+            {
+                return null;
+            }
+
+            try
+            {
+                var attribute = type.GetCustomAttribute<ProjectionAttribute>();
+                if (attribute is { })
+                {
+                    return new DolittleEvent
+                    {
+                        Id = attribute.Identifier.ToString(),
+                        Name = type.Name
+                    };
+                }
+            }
+            catch { }
+            return null;
+
         }
 
         public static DolittleEvent AsDolittleEvent(this Type type)
