@@ -155,37 +155,32 @@ Binaries Path       : {configuration.BinariesPath}
                 _config.MongoConfig.MongoDB,
                 output);
 
-            Guid guidId;
-            if (Guid.TryParse(Id, out var parsedEventSourceId))
+            string guidId;
+            
+            var eventSources = await reader
+                .GetUniqueEventSources(map)
+                .ConfigureAwait(false);
+
+            var matches = eventSources.Where(source => source.Id.ToString().StartsWith(Id));
+
+            if (!matches.Any())
             {
-                guidId = parsedEventSourceId;
+                output.Write(
+                    $"No event-sources-ids for the aggregate {map.Aggregate.Name} starts with {Id}."
+                );
+                return;
             }
-            else
+            if (matches.Count() > 1)
             {
-                var eventSources = await reader
-                    .GetUniqueEventSources(map)
-                    .ConfigureAwait(false);
-
-                var matches = eventSources.Where(source => source.Id.ToString().StartsWith(Id));
-
-                if (!matches.Any())
-                {
-                    output.Write(
-                        $"No event-sources-ids for the aggregate {map.Aggregate.Name} starts with {Id}."
-                    );
-                    return;
-                }
-                if (matches.Count() > 1)
-                {
-                    output.Write(
-                        $"Two or more event-sources for the aggregate {map.Aggregate.Name} starts with {Id}"
-                    );
-                    return;
-                }
-
-                guidId = matches.First().Id;
-                output.Write($"Found single match for \"{Id}\": {guidId}{Environment.NewLine}");
+                output.Write(
+                    $"Two or more event-sources for the aggregate {map.Aggregate.Name} starts with {Id}"
+                );
+                return;
             }
+
+            guidId= matches.First().Id;
+            output.Write($"Found single match for \"{Id}\": {guidId}{Environment.NewLine}");
+            
 
             var eventLog = (await reader.GetEventLog(map, guidId).ConfigureAwait(false)).ToList();
 

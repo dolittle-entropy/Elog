@@ -6,7 +6,7 @@ namespace MongoDbReading
     {
         public string Aggregate { get; set; }
 
-        public Guid Id { get; set; }
+        public string Id { get; set; }
 
         public int EventCount { get; set; }
     }

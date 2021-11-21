@@ -57,8 +57,8 @@ namespace MongoDbReading
             foreach (var document in allDocuments)
             {
                 var dotNetObject = BsonTypeMapper.MapToDotNetValue(document);
-                var eventSourceId = document["Metadata"]["EventSource"].AsGuid;
-                var existing = completeList.Find(es => es.Id == eventSourceId);
+                var eventSourceId = document["Metadata"]["EventSource"].AsString;
+                var existing = completeList.Find(es => es.Id == eventSourceId.ToString());
                 if (existing is { })
                 {
                     existing.EventCount++;
@@ -68,7 +68,7 @@ namespace MongoDbReading
                     completeList.Add(new EventSource
                     {
                         Aggregate = map.Aggregate.Name,
-                        Id = eventSourceId,
+                        Id = eventSourceId.ToString(),
                         EventCount = 1
                     });
                 }
@@ -76,12 +76,12 @@ namespace MongoDbReading
             return completeList;
         }
 
-        public async Task<IEnumerable<EventEntry>> GetEventLog(DolittleTypeMap map, Guid id)
+        public async Task<IEnumerable<EventEntry>> GetEventLog(DolittleTypeMap map, string id)
         {
             Out.Write("Reading the eventlog...");
 
             var aggregateId = $"UUID(\"{map.Aggregate.Id}\")";
-            var eventSourceId = $"UUID(\"{id}\")";
+            var eventSourceId = $"\"{id}\"";
             var query = $"{{ 'Aggregate.WasAppliedByAggregate' : true, 'Aggregate.TypeId' : {aggregateId}, 'Metadata.EventSource' : {eventSourceId} }}";
             var filter = BsonSerializer.Deserialize<BsonDocument>(query);
 

@@ -19,15 +19,23 @@ namespace TypeMapping
                 return null;
             }
 
-            var attribute = type.GetCustomAttribute<AggregateRootAttribute>();
+            var attribute = (AggregateRootAttribute) type.GetCustomAttribute<AggregateRootAttribute>();
 
-            if (attribute is { })
+            if (attribute is AggregateRootAttribute attr)
             {
-                return new DolittleAggregate
+                try
                 {
-                    Id = attribute.Id,
-                    Name = type.Name
-                };
+                    return new DolittleAggregate
+                    {                    
+                        Id = attr.Type.Id,
+                        Name = type.Name
+                    };
+                }
+                catch
+                {
+
+                }
+
             }
             return null;
         }
@@ -46,7 +54,7 @@ namespace TypeMapping
                 {
                     return new DolittleEvent
                     {
-                        Id = attribute.EventType.ToString(),
+                        Id = attribute.Identifier.ToString(),
                         Name = type.Name
                     };
                 }
