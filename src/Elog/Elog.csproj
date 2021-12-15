@@ -4,8 +4,8 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
     <PackAsTool>true</PackAsTool>    
-    <AssemblyVersion>1.0.0.3</AssemblyVersion>
-    <FileVersion>1.0.0.3</FileVersion>
+    <AssemblyVersion>1.0.0.5</AssemblyVersion>
+    <FileVersion>1.0.0.5</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Authors>Dolittle AS/digitaldias</Authors>
     <Company>Dolittle AS</Company>
@@ -14,13 +14,15 @@
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <RepositoryUrl>https://github.com/dolittle-entropy/Elog.git</RepositoryUrl>
     <PackageProjectUrl>https://github.com/dolittle-entropy/Elog</PackageProjectUrl>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>elog</ToolCommandName>
     <PackageIcon>dolittle_positiv_kvadratisk@4x_RGB.png</PackageIcon>
-    <Version>1.0.2</Version>
+    <Version>1.0.5</Version>
     <NeutralLanguage>en</NeutralLanguage>
     <Platforms>AnyCPU;x86;x64</Platforms>
     <RepositoryType>git</RepositoryType>
     <PackageReleaseNotes>
-      This version of Elog supports Dolitle.SDK 12.0.0 and later only. 
+      This version of Elog supports Dolitle.SDK 13.0.0 and later only. 
       In this release, a small bug was fixed that addresses reading events
       from common libraries. 
     </PackageReleaseNotes>
@@ -41,7 +43,7 @@
 
   <ItemGroup>
     <PackageReference Include="ConsoleTables" Version="2.4.2" />
-    <PackageReference Include="Dolittle.SDK.Aggregates" Version="12.0.0" />
+    <PackageReference Include="Dolittle.SDK.Aggregates" Version="13.0.0-gimli.3" />
     <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="4.0.0-beta.74" />
   </ItemGroup>
 

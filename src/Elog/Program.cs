@@ -161,7 +161,7 @@ Binaries Path       : {configuration.BinariesPath}
                 .GetUniqueEventSources(map)
                 .ConfigureAwait(false);
 
-            var matches = eventSources.Where(source => source.Id.ToString().StartsWith(Id));
+            var matches = eventSources.Where(source => source.Id.ToString().Equals(Id, StringComparison.InvariantCultureIgnoreCase));
 
             if (!matches.Any())
             {

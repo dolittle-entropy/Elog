@@ -1,8 +1,7 @@
 {
   "profiles": {
     "Elog": {
-      "commandName": "Project",
-      "commandLineArgs": "-a Facilities -id \"300 Property\""
+      "commandName": "Project"
     }
   }
 }

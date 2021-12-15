@@ -6,8 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dolittle.SDK.Aggregates" Version="12.0.0" />
-    <PackageReference Include="Dolittle.SDK.Projections" Version="12.0.0" />
+    <PackageReference Include="Dolittle.SDK.Aggregates" Version="13.0.0-gimli.3" />
+    <PackageReference Include="Dolittle.SDK.Projections" Version="13.0.0-gimli.3" />
   </ItemGroup>
 
   <ItemGroup>
