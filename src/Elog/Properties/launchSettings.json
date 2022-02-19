@@ -1,7 +1,8 @@
 {
   "profiles": {
     "Elog": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "configure -d"
     }
   }
 }

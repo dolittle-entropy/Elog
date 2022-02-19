@@ -1,4 +1,5 @@
 ﻿using System;
+using Spectre.Console;
 
 namespace OutputWriting
 {
@@ -8,36 +9,38 @@ namespace OutputWriting
 
         public string AskForValue(string question, string defaultAnswer)
         {
-            Console.Write(question);
-            var currColor = Console.ForegroundColor;
-            Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.WriteLine(defaultAnswer);
-            Console.ForegroundColor = currColor;
+            return AnsiConsole.Ask<string>(question);
 
-            var (_, top) = Console.GetCursorPosition();
-            Console.SetCursorPosition(question.Length, top - 1);
-            var key = Console.ReadKey();
+            //Console.Write(question);
+            //var currColor = Console.ForegroundColor;
+            //Console.ForegroundColor = ConsoleColor.DarkGray;
+            //Console.WriteLine(defaultAnswer);
+            //Console.ForegroundColor = currColor;
 
-            while (key.Key == ConsoleKey.Backspace)
-            {
-                Console.SetCursorPosition(question.Length, top - 1);
-                key = Console.ReadKey();
-            }
+            //var (_, top) = Console.GetCursorPosition();
+            //Console.SetCursorPosition(question.Length, top - 1);
+            //var key = Console.ReadKey();
 
-            if (key.Key == ConsoleKey.Enter)
-            {
-                Console.SetCursorPosition(0, top);
-                return defaultAnswer;
-            }
-            else
-            {
-                Console.Write(new string(' ', defaultAnswer.Length)); // clean this line
-                Console.SetCursorPosition(question.Length, top - 1);
-                Console.Write(key.KeyChar);
-                var res = key.KeyChar + Console.ReadLine();
-                Console.SetCursorPosition(0, top);
-                return res;
-            }
+            //while (key.Key == ConsoleKey.Backspace)
+            //{
+            //    Console.SetCursorPosition(question.Length, top - 1);
+            //    key = Console.ReadKey();
+            //}
+
+            //if (key.Key == ConsoleKey.Enter)
+            //{
+            //    Console.SetCursorPosition(0, top);
+            //    return defaultAnswer;
+            //}
+            //else
+            //{
+            //    Console.Write(new string(' ', defaultAnswer.Length)); // clean this line
+            //    Console.SetCursorPosition(question.Length, top - 1);
+            //    Console.Write(key.KeyChar);
+            //    var res = key.KeyChar + Console.ReadLine();
+            //    Console.SetCursorPosition(0, top);
+            //    return res;
+            //}
         }
 
         public void DisplayError(string errorMessage)

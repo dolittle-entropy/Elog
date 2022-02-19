@@ -1,17 +1,16 @@
 ﻿
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using AssemblyReading;
 using ConsoleTables;
 using McMaster.Extensions.CommandLineUtils;
 using MongoDbReading;
 using Newtonsoft.Json;
 using OutputWriting;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.Tracing;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Elog
 {
@@ -180,7 +179,6 @@ Binaries Path       : {configuration.BinariesPath}
 
             guidId= matches.First().Id;
             output.Write($"Found single match for \"{Id}\": {guidId}{Environment.NewLine}");
-            
 
             var eventLog = (await reader.GetEventLog(map, guidId).ConfigureAwait(false)).ToList();
 
@@ -219,5 +217,4 @@ Binaries Path       : {configuration.BinariesPath}
         }
     }
 }
-
 

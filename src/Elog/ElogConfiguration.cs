@@ -8,6 +8,8 @@
 
         public MongoConfig MongoConfig { get; set; }
 
+        public bool IsDefault { get; set; }
+
         public const string ConfigurationFileName = "elog.config";
     }
 }
