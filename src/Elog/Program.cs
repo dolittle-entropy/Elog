@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Reflection;
 using System.Threading.Tasks;
 using McMaster.Extensions.CommandLineUtils;
 using OutputWriting;
@@ -16,6 +17,11 @@ namespace Elog
 
         public void OnExecute(CommandLineApplication app)
         {
+            if(Version)
+            {
+                Ansi.Success($"Elog version {ColorAs.Value(Assembly.GetExecutingAssembly().GetName().Version.ToString())}. All rights reversed");
+                return;
+            }
             var stopwatch = Stopwatch.StartNew();
             AnsiConsole.Clear();
             AnsiConsole.Write(new FigletText("ELOG").LeftAligned().Color(Color.Orange1));
@@ -23,6 +29,9 @@ namespace Elog
             Ansi.Info($"Program finished in {stopwatch.ElapsedMilliseconds:### ###.0}ms");
             AnsiConsole.Reset();
         }
+
+        [Option(Description = "Display version information")]
+        public bool Version { get; set; }
     }
 }
 
