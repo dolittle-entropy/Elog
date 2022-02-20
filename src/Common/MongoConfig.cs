@@ -1,4 +1,4 @@
-﻿namespace Elog
+﻿namespace Common
 {
     public class MongoConfig
     {

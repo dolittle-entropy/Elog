@@ -18,9 +18,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AssemblyReading", "AssemblyReading\AssemblyReading.csproj", "{2E6B1127-4492-41EB-B7F6-D4AA49DFABA5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoDbReading", "MongoDbReading\MongoDbReading.csproj", "{DE626F0D-2F0A-425B-963A-3EC1F6CD01EB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MongoDbReading", "MongoDbReading\MongoDbReading.csproj", "{DE626F0D-2F0A-425B-963A-3EC1F6CD01EB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OutputWriting", "OutputWriting\OutputWriting.csproj", "{5E255649-CFBA-4FDE-A9FE-71260F941050}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OutputWriting", "OutputWriting\OutputWriting.csproj", "{5E255649-CFBA-4FDE-A9FE-71260F941050}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{9B43128F-DA09-40BE-BC99-6AD4FF60EA4C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -48,6 +50,10 @@ Global
 		{5E255649-CFBA-4FDE-A9FE-71260F941050}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5E255649-CFBA-4FDE-A9FE-71260F941050}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5E255649-CFBA-4FDE-A9FE-71260F941050}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B43128F-DA09-40BE-BC99-6AD4FF60EA4C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B43128F-DA09-40BE-BC99-6AD4FF60EA4C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B43128F-DA09-40BE-BC99-6AD4FF60EA4C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B43128F-DA09-40BE-BC99-6AD4FF60EA4C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -58,6 +64,7 @@ Global
 		{2E6B1127-4492-41EB-B7F6-D4AA49DFABA5} = {3116D418-BFC2-4AC4-B93F-72770635445F}
 		{DE626F0D-2F0A-425B-963A-3EC1F6CD01EB} = {3116D418-BFC2-4AC4-B93F-72770635445F}
 		{5E255649-CFBA-4FDE-A9FE-71260F941050} = {3116D418-BFC2-4AC4-B93F-72770635445F}
+		{9B43128F-DA09-40BE-BC99-6AD4FF60EA4C} = {3116D418-BFC2-4AC4-B93F-72770635445F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BF1E10CE-A543-4BE7-8C1C-9F24359345BB}

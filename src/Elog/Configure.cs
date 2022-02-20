@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Common;
 using McMaster.Extensions.CommandLineUtils;
 using MongoDB.Bson;
 using MongoDB.Driver;

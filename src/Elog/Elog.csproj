@@ -51,6 +51,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AssemblyReading\AssemblyReading.csproj" />
+    <ProjectReference Include="..\Common\Common.csproj" />
     <ProjectReference Include="..\MongoDbReading\MongoDbReading.csproj" />
     <ProjectReference Include="..\OutputWriting\OutputWriting.csproj" />
     <ProjectReference Include="..\TypeMapping\TypeMapping.csproj" />
