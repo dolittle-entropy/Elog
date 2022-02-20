@@ -2,7 +2,7 @@
   "profiles": {
     "Elog": {
       "commandName": "Project",
-      "commandLineArgs": "config -u"
+      "commandLineArgs": "config -c"
     }
   }
 }

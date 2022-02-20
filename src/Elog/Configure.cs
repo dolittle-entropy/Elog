@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using McMaster.Extensions.CommandLineUtils;
+using MongoDB.Bson;
+using MongoDB.Driver;
 using MongoDbReading;
 using Newtonsoft.Json;
 using OutputWriting;
@@ -38,7 +40,7 @@ namespace Elog
 
         public void OnExecute(CommandLineApplication app)
         {
-            if (Create) { CreateConfiguration(); return; }
+            if (Create) { CreateConfiguration(false); return; }
             if (Delete) { DeleteConfiguration(); return; }
             if (ActiveConfiguration) { ChangeDefaultConfiguration(); return; }
             if (Update) { EditSomeConfiguration(); return; }
@@ -48,10 +50,10 @@ namespace Elog
             app.ShowHelp();
         }
 
-        private void CreateConfiguration()
+        private void CreateConfiguration(bool firstTime)
         {
-            var config = PromptForConfiguration();
-            if (config is null)
+
+            if (!PromptForConfiguration(firstTime))
             {
                 Ansi.Warning("Configuration abandoned");
                 return;
@@ -63,7 +65,7 @@ namespace Elog
             const string cancelMessage = "[red]* Cancel[/]";
             const string marker = "[yellow] *active*[/]";
 
-            var configurations = LoadConfiguration();
+            var configurations = LoadConfigurations();
             var list = new List<string>();
             list.Add(cancelMessage);
             list.AddRange(configurations.Select(c => c.IsDefault ? $"{c.Name}{marker}" : c.Name));
@@ -118,10 +120,10 @@ namespace Elog
 
         private void ChangeDefaultConfiguration()
         {
-            const string cancelMessage = "[red]* Cancel[/]";
-            const string marker = "[yellow] *active*[/]";
+            var cancelMessage = ColorAs.Warning("Cancel");
+            var marker = ColorAs.Success(" **active**");
 
-            var configurations = LoadConfiguration();
+            var configurations = LoadConfigurations();
             var list = new List<string>();
             list.Add(cancelMessage);
             list.AddRange(configurations.Select(c => c.IsDefault ? $"{c.Name}{marker}" : c.Name));
@@ -166,7 +168,7 @@ namespace Elog
         {
             const string cancelMessage = "[red]* Cancel[/]";
 
-            var configurations = LoadConfiguration();
+            var configurations = LoadConfigurations();
             var list = new List<string>();
             list.Add(cancelMessage);
             list.AddRange(configurations.Select(c => c.Name));
@@ -221,11 +223,11 @@ namespace Elog
 
         private void DisplayConfigurations()
         {
-            var savedConfigs = LoadConfiguration();
-            if(!savedConfigs?.Any() ?? true)
+            var savedConfigs = LoadConfigurations();
+            if (!savedConfigs?.Any() ?? true)
             {
                 Ansi.Warning("No configurations found. Starting the configuration wizard");
-                CreateConfiguration();
+                CreateConfiguration(firstTime: true);
                 return;
             }
 
@@ -297,7 +299,7 @@ namespace Elog
         bool TestConfiguration(ElogConfiguration config)
         {
             const string KeyDolittleSDKFile = "Dolittle.SDK.*";
-            
+
             var folder = new DirectoryInfo(config.BinariesPath);
             if (folder.GetFiles(KeyDolittleSDKFile).Length == 0)
             {
@@ -309,47 +311,60 @@ namespace Elog
                 config.MongoConfig.Port,
                 config.MongoConfig.MongoDB);
 
-                if (!eventStoreReader.ConnectionWorks())
-                {
-                    Ansi.Error($"Unable to connect to mongo using '{config.MongoConfig.MongoServer}.{config.MongoConfig.MongoDB}:{config.MongoConfig.Port}'");
-                    return false;
-                }
+            if (!eventStoreReader.ConnectionWorks())
+            {
+                Ansi.Error($"Unable to connect to mongo using '{config.MongoConfig.MongoServer}.{config.MongoConfig.MongoDB}:{config.MongoConfig.Port}'");
+                return false;
+            }
             return true;
         }
 
-        ElogConfiguration PromptForConfiguration()
+        bool PromptForConfiguration(bool firstConfiguration)
         {
-            var currentConfig = LoadConfiguration();
-            if (currentConfig == null)
-                currentConfig = new List<ElogConfiguration>();
+            var allConfigurations = LoadConfigurations();
+            if (allConfigurations == null)
+            {
+                allConfigurations = new List<ElogConfiguration>();
+                firstConfiguration = true;
+            }
 
             // Get config name or fail
-            var configName = GetConfigurationName(currentConfig);
+            var configName = GetConfigurationName(allConfigurations);
             if (string.IsNullOrEmpty(configName))
-                return null;
+                return false;
 
             // Get mongo settings
-            var mongoServer = AnsiConsole.Ask("MongoDB [yellow]ServerInstance[/]          : ", "localhost");
-            var mongoDB = AnsiConsole.Ask("MongoDB Database [yellow]name[/]           : ", "event_store");
-            var mongoPort = AnsiConsole.Ask("[yellow]Port[/] to use                     : ", 27017);
+            var mongoServer = AnsiConsole.Ask("MongoDB Server Instance: ", "localhost");
+            var mongoPort = AnsiConsole.Ask("MongoDb Port to use: ", 27017);
+
+            var mongoDB = ChooseEventStore(mongoServer, mongoPort);
+            if (string.IsNullOrEmpty(mongoDB))
+                return false;
 
             // Get binaries folder
-            var pathToBinaries = AnsiConsole.Ask("Complete [yellow]path[/] to binaries folder: ", "C:\\dev");
+            var pathToBinaries = AnsiConsole.Ask("Complete path to binaries folder: ", "C:\\dev");
             while (!Directory.Exists(pathToBinaries))
             {
-                AnsiConsole.MarkupLine($"[red]Path does not exist:[/] {pathToBinaries}");
-                pathToBinaries = AnsiConsole.Ask("Complete [yellow]path[/] to binaries folder: ", "C:\\dev");
+                Ansi.Error($"Path does not exist: {ColorAs.Value(pathToBinaries)}");
+                pathToBinaries = AnsiConsole.Ask("Complete path to binaries folder: ", "C:\\dev");
             }
             // Ask if this should be the new default
-            var makeDefaultConfig = AnsiConsole.Confirm("Make this the default configuration?", false);
+            bool makeDefaultConfig = false;
+            if (firstConfiguration)
+                makeDefaultConfig = true;
+            else
+                makeDefaultConfig = AnsiConsole.Confirm("Make this the default configuration?", false);
 
+            ElogConfiguration? resultingConfiguration = null;
+
+            var checksPassed = false;
             AnsiConsole.Status().Start("Checking the MongoDb settings", ctx =>
             {
                 if (!MongoConfigurationIsValid(mongoServer, mongoDB, mongoPort))
-                {                    
+                {
                     return;
                 }
-                var config = new ElogConfiguration
+                resultingConfiguration = new ElogConfiguration
                 {
                     Name = configName,
                     BinariesPath = pathToBinaries,
@@ -363,28 +378,95 @@ namespace Elog
                 };
                 Thread.Sleep(1000);
                 ctx.Status("Testing your configuration...");
-                if (!TestConfiguration(config))
-                {                 
+                if (!TestConfiguration(resultingConfiguration))
                     return;
-                }
 
                 ctx.Status("Applying the new configuration...");
                 if (makeDefaultConfig)
                 {
-                    for (int i = 0; i < currentConfig.Count; i++)
-                        currentConfig[i].IsDefault = false;
+                    for (int i = 0; i < allConfigurations.Count; i++)
+                        allConfigurations[i].IsDefault = false;
 
-                    config.IsDefault = true;
+                    resultingConfiguration.IsDefault = true;
                 }
-                currentConfig.Add(config);
+
+                allConfigurations.Add(resultingConfiguration);
                 Thread.Sleep(1000);
 
                 ctx.Status("Writing configuration...");
-                WriteConfiguration(currentConfig);
+                WriteConfiguration(allConfigurations);
                 Thread.Sleep(1000);
+                checksPassed = true;
             });
 
-            return null;
+            return checksPassed;
+        }
+
+        private string? ChooseEventStore(string mongoServer, int mongoPort)
+        {
+            var eventStoreNames = GetEventStoreDatabaseNames(mongoServer, mongoPort);
+            if (!eventStoreNames?.Any() ?? true)
+            {
+                return String.Empty;
+            }
+
+            var choiceDetail = ColorAs.Value($"Found {eventStoreNames.Count} Event Stores. Select with up/down, confirm with ENTER");
+            if (eventStoreNames.Count == 1)
+                choiceDetail = ColorAs.Value("Found one Event Store found. Confirm with ENTER");
+
+            var chosenEventStore = AnsiConsole.Prompt(new SelectionPrompt<string>()
+                .Title(choiceDetail)
+                .PageSize(10)
+                .AddChoices(eventStoreNames)
+                .MoreChoicesText("Use the up/down keys to see more")
+                );
+
+            Ansi.Info($"Selected EventStore database: {ColorAs.Success(chosenEventStore)}");
+            return chosenEventStore;
+        }
+
+        private List<string> GetEventStoreDatabaseNames(string mongoServer, int mongoPort)
+        {
+            var eventStoreDatabaseNames = new List<string>();
+            var mongoSettings = new MongoClientSettings
+            {
+                Server = new MongoServerAddress(mongoServer, mongoPort),
+                ConnectTimeout = TimeSpan.FromSeconds(3),
+                ServerSelectionTimeout = TimeSpan.FromSeconds(3)
+            };
+            MongoClient? client = null;
+            List<BsonDocument>? allDatabases = null;
+            try
+            {
+                client = new MongoClient(mongoSettings);
+                allDatabases = client.ListDatabases().ToList();
+            }
+            catch (Exception ex)
+            {
+                Ansi.Error($"Unable to connecto to server {ColorAs.Value(mongoServer)} using port {ColorAs.Value(mongoPort.ToString())}");
+                return eventStoreDatabaseNames;
+            }
+
+            if (client is null || allDatabases is null)
+                return eventStoreDatabaseNames;
+
+            foreach (var database in allDatabases)
+            {
+                var dbName = database["name"].AsString;
+                if (dbName == null)
+                    continue;
+
+                var db = client.GetDatabase(dbName);
+                var collectionNames = db.ListCollectionNames().ToList();
+                if (collectionNames.Any(collectionName => collectionName.Equals("event-log")))
+                {
+                    eventStoreDatabaseNames.Add(dbName);
+                }
+            }
+            if (!eventStoreDatabaseNames.Any())
+                Ansi.Error($"No eventstores found in {ColorAs.Value(mongoServer)} using port {ColorAs.Value(mongoPort.ToString())}");
+
+            return eventStoreDatabaseNames;
         }
 
         static string GetConfigurationName(List<ElogConfiguration> currentConfig)
@@ -437,7 +519,7 @@ namespace Elog
             return eventStoreReader.ConnectionWorks();
         }
 
-        private List<ElogConfiguration> LoadConfiguration()
+        private List<ElogConfiguration> LoadConfigurations()
         {
             List<ElogConfiguration> existingConfiguration = null;
 
