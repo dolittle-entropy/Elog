@@ -1,22 +1,21 @@
-﻿using OutputWriting;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Metadata;
-using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
-using System.Xml.Linq;
+using OutputWriting;
 using TypeMapping;
 
 namespace AssemblyReading
 {
-    public class AssemblyReader
+    public class AssemblyReader : IDisposable
     {
+        private const string AggregateRootName = "AggregateRoot";
         static readonly string[] skipDllsWith = new[]
         {
             "Microsoft.",
+            "Azure",
             "DnsClient.",
             "Serilog.",
             "Newtonsoft.",
@@ -32,65 +31,64 @@ namespace AssemblyReading
             "Polly.",
             "AutofacSerilogIntegration.",
             "SharpCompress.",
-            "libwkhtmltox."
+            "libwkhtmltox.",
+            "Lamar",
+            "AutoMapper",
+            "MediatR",
+            "Confluent",
+            "StackExchange.Redis",
+            "BaselineTypeDiscovery",
+            "GreenDonut",
+            "Pipelines"
         };
         readonly string _assemblyFolder;
+        readonly string _aggregateRootPath;
+        readonly MetadataLoadContext _metadataContext;
+
+        readonly List<DolittleAggregate> _aggregateList;
+        readonly List<DolittleEvent> _eventList;
+        readonly List<DolittleProjection> _projectionList;
 
         IOutputWriter Out { get; }
 
         public AssemblyReader(string dolittleAssemblyFolder, IOutputWriter outputWriter)
         {
+            const string ExpectedAssemblyName = "Dolittle.SDK.Aggregates.dll";
+
             _assemblyFolder = dolittleAssemblyFolder;
+            _aggregateRootPath = Path.Combine(_assemblyFolder, ExpectedAssemblyName);
+            if (!File.Exists(_aggregateRootPath))
+                throw new FileNotFoundException(nameof(_aggregateRootPath));
+
+            var resolver = new PathAssemblyResolver(new List<string>(Directory.GetFiles(RuntimeEnvironment.GetRuntimeDirectory(), "*.dll"))
+                    {
+                        _aggregateRootPath
+                    });
+            _metadataContext = new MetadataLoadContext(resolver);
+            _aggregateList = new List<DolittleAggregate>();
+            _eventList = new List<DolittleEvent>();
+            _projectionList = new List<DolittleProjection>();
             Out = outputWriter;
         }
 
-        public DolittleTypeMap GenerateMapForAggregate(string aggregateName)
+        public List<DolittleAggregate> DolittleAggregates => _aggregateList;
+
+        public List<DolittleEvent> DolittleEvents => _eventList;
+
+        public List<DolittleProjection> ProjectionList => _projectionList;
+
+        public DolittleTypeMap? GenerateMapForAggregate(string aggregateName)
         {
-            var aggregateRootType = FindAndIdentifyAggregateRootType();
-            if (aggregateRootType is null)
-            {
-                Out.DisplayError("Unable to find aggregate root type, must abort");
-                return null;
-            }
-            var dllFiles = LoadDllFiles();
             var typeMap = new DolittleTypeMap();
+            DiscoverDolittleTypes();
+            var aggregate = _aggregateList.FirstOrDefault(a => a.Name.Equals(aggregateName, StringComparison.InvariantCultureIgnoreCase));
 
-            foreach (var dllFile in dllFiles)
-            {
-                Type[] types;
-                try
-                {
-                    types = Assembly.LoadFrom(dllFile).GetTypes();
-                }
-                catch
-                {
-                    continue;
-                }
+            if (aggregate == null)
+                return null;
 
-                foreach (var type in types)
-                {
-                    var typeName = type.Name;
-                    if (typeName.Length > 0)
-                    {
+            typeMap.Aggregate = aggregate;
+            typeMap.Events = _eventList;            
 
-                    }
-                    if (type.AsDolittleAggregate(aggregateRootType) is { } dolittleAggregate)
-                    {
-                        if (dolittleAggregate.Name.Equals(aggregateName, StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            typeMap.Aggregate = dolittleAggregate;
-                        }
-                    }
-                    else if (type.AsDolittleEvent() is { } dolittleEvent)
-                    {
-                        typeMap.Events.Add(dolittleEvent);
-                    }
-                    else if (type.AsDolittleProjection() is { } dolittleProjection)
-                    {
-                        typeMap.Events.Add(dolittleProjection);
-                    }
-                }
-            }
             if (typeMap.Aggregate is { })
             {
                 Out.Write($"Aggregate '{typeMap.Aggregate.Name}', {typeMap.Aggregate.Id}.\nEventTypes found in binaries folder: {typeMap.Events.Count}");
@@ -98,39 +96,84 @@ namespace AssemblyReading
             return typeMap;
         }
 
-        public IEnumerable<DolittleAggregate> GetAllAggregates()
+        /// <summary>
+        /// Perform a discovery on all aggregates, events, and projections        
+        /// </summary>
+        public void DiscoverDolittleTypes()
         {
-            var aggregateRootType = FindAndIdentifyAggregateRootType();
-            if (aggregateRootType is null)
-            {
-                Out.DisplayError("Unable to find aggregate root type, must abort");
-                return null;
-            }
-
-            var finalList = new List<DolittleAggregate>();
             var dllFiles = LoadDllFiles();
 
-            foreach (var dllFile in dllFiles)
+            foreach (var dllFilePath in dllFiles)
             {
                 Type[] types;
-                try
-                {
-                    types = Assembly.LoadFrom(dllFile).GetTypes();
-                }
-                catch
-                {
-                    continue;
-                }
+                var assembly = _metadataContext.LoadFromAssemblyPath(dllFilePath);
+                types = assembly.GetTypes();
 
                 foreach (var type in types)
                 {
-                    if (type.AsDolittleAggregate(aggregateRootType) is { } dolittleAggregate)
+                    try
                     {
-                        finalList.Add(dolittleAggregate);
+                        if (MapTypeToAggregateRoot(type))
+                            continue;
+
+                        if (MapTypeToDolittleEvent(type))
+                            continue;
+
+                        if (MapTypeToDolittleProjection(type))
+                            continue;
+                    }
+                    catch
+                    {
+                        continue;
                     }
                 }
             }
-            return finalList;
+        }
+
+        private bool MapTypeToDolittleEvent(Type type)
+        {
+            var eventTypeAttribute = type.GetCustomAttributesData().FirstOrDefault(a => a.AttributeType.Name.Equals(DolittleEvent.AttributeName));
+            if (eventTypeAttribute is null)
+                return false;
+
+            var eventTypeId = eventTypeAttribute.ConstructorArguments[0].Value.ToString();
+            if (string.IsNullOrEmpty(eventTypeId))
+                return false;
+            
+            _eventList.Add(new DolittleEvent { Name = type.Name, Id = eventTypeId });
+            return true;
+        }
+
+        private bool MapTypeToDolittleProjection(Type type)
+        {
+            var eventTypeAttribute = type.GetCustomAttributesData().FirstOrDefault(a => a.AttributeType.Name.Equals(DolittleProjection.AttributeName));
+            if (eventTypeAttribute is null)
+                return false;
+
+            var eventTypeId = eventTypeAttribute.ConstructorArguments[0].Value.ToString();
+            if (string.IsNullOrEmpty(eventTypeId))
+                return false;
+
+            _eventList.Add(new DolittleEvent { Name = type.Name, Id = eventTypeId });
+            return true;
+        }
+
+        private bool MapTypeToAggregateRoot(Type type)
+        {
+            if (type.BaseType?.Name.Equals(AggregateRootName) ?? false)
+            {
+                var aggregateRootAttribute = type.GetCustomAttributesData().FirstOrDefault(a => a.AttributeType.Name.Equals(DolittleAggregate.AttributeName));
+                if (aggregateRootAttribute is null)
+                    return false;
+
+                var aggregateRootId = aggregateRootAttribute.ConstructorArguments[0].Value.ToString();
+
+                if (string.IsNullOrEmpty(aggregateRootId))
+                    return false;
+
+                _aggregateList.Add(new DolittleAggregate { Id = Guid.Parse(aggregateRootId), Name = type.Name });
+            }
+            return true;
         }
 
         List<string> LoadDllFiles()
@@ -148,38 +191,9 @@ namespace AssemblyReading
             return finalList;
         }
 
-        private Type FindAndIdentifyAggregateRootType()
+        public void Dispose()
         {
-            const string ExpectedAssemblyName = "Dolittle.SDK.Aggregates.dll";
-            var fullPath = Path.Combine(_assemblyFolder, ExpectedAssemblyName);
-            if (File.Exists(fullPath))
-            {
-                try
-                {
-                    var resolver = new PathAssemblyResolver(new List<string>( Directory.GetFiles(RuntimeEnvironment.GetRuntimeDirectory(), "*.dll"))
-                    {
-                        fullPath
-                    });
-                    using var metadataContext = new MetadataLoadContext(resolver);
-
-                    var assembly = metadataContext.LoadFromAssemblyPath(fullPath);
-
-                    foreach (var type in assembly.GetTypes())
-                    {
-                        if (type.Name.Equals("AggregateRoot"))
-                        {
-                            return type;
-                        }
-
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
-            }
-
-            return null;
+            _metadataContext.Dispose();
         }
     }
 }
