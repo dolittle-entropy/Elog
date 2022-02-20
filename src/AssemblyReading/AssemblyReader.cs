@@ -4,6 +4,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
+using System.Runtime.InteropServices;
+using System.Xml.Linq;
 using TypeMapping;
 
 namespace AssemblyReading
@@ -52,7 +56,7 @@ namespace AssemblyReading
             var typeMap = new DolittleTypeMap();
 
             foreach (var dllFile in dllFiles)
-            {                
+            {
                 Type[] types;
                 try
                 {
@@ -66,7 +70,7 @@ namespace AssemblyReading
                 foreach (var type in types)
                 {
                     var typeName = type.Name;
-                    if(typeName.Length > 0)
+                    if (typeName.Length > 0)
                     {
 
                     }
@@ -78,10 +82,10 @@ namespace AssemblyReading
                         }
                     }
                     else if (type.AsDolittleEvent() is { } dolittleEvent)
-                    {                        
+                    {
                         typeMap.Events.Add(dolittleEvent);
                     }
-                    else if( type.AsDolittleProjection() is { } dolittleProjection)
+                    else if (type.AsDolittleProjection() is { } dolittleProjection)
                     {
                         typeMap.Events.Add(dolittleProjection);
                     }
@@ -147,12 +151,34 @@ namespace AssemblyReading
         private Type FindAndIdentifyAggregateRootType()
         {
             const string ExpectedAssemblyName = "Dolittle.SDK.Aggregates.dll";
-
-            var assembly = Assembly.LoadFrom(Path.Combine(_assemblyFolder, ExpectedAssemblyName));
-            if (assembly is { })
+            var fullPath = Path.Combine(_assemblyFolder, ExpectedAssemblyName);
+            if (File.Exists(fullPath))
             {
-                return Array.Find(assembly.GetTypes(), t => t.Name.Equals("AggregateRoot"));
+                try
+                {
+                    var resolver = new PathAssemblyResolver(new List<string>( Directory.GetFiles(RuntimeEnvironment.GetRuntimeDirectory(), "*.dll"))
+                    {
+                        fullPath
+                    });
+                    using var metadataContext = new MetadataLoadContext(resolver);
+
+                    var assembly = metadataContext.LoadFromAssemblyPath(fullPath);
+
+                    foreach (var type in assembly.GetTypes())
+                    {
+                        if (type.Name.Equals("AggregateRoot"))
+                        {
+                            return type;
+                        }
+
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
             }
+
             return null;
         }
     }
