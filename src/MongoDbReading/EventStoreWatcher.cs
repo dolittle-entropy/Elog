@@ -22,57 +22,65 @@ namespace MongoDbReading
 
         public Task StartAsync(DolittleTypeMap typeMap)
         {
-            return Task.Run(async () => {
-                var client = CreateMongoClient();
-                var database = client.GetDatabase(_config.MongoConfig.MongoDB);
-                var collectionToWatch = database.GetCollection<BsonDocument>("event-log");
-
-                using var cursor = collectionToWatch.Watch();
-
+            return Task.Run(async () =>
+            {
                 // Sit tight until something happens
-                while(cursor.MoveNext() && cursor.Current.Count() == 0)
-                {
+                using var cursor = CreateCollectionClient().Watch();
+                while (cursor.MoveNext() && cursor.Current.Count() == 0)
                     await Task.Yield();
-                }
 
                 do
                 {
-                    foreach(var change in cursor.Current.AsEnumerable())
+                    foreach (var change in cursor.Current.AsEnumerable())
                     {
                         try
                         {
                             var document = BsonSerializer.Deserialize<BsonDocument>(change.FullDocument);
-                            if(document["Aggregate"]["WasAppliedByAggregate"].AsBoolean)
-                            {
-                                var eventOffset = document["_id"].AsInt64;
-                                var aggregateId = document["Aggregate"]["TypeId"].AsGuid;
-                                var eventTypeId = document["Metadata"]["TypeId"].AsGuid;
-                                if (aggregateId != typeMap.Aggregate.Id)
-                                    continue;
+                            if (!document["Aggregate"]["WasAppliedByAggregate"].AsBoolean)
+                                continue;
 
-                                var mathcingEvent = typeMap.Events.FirstOrDefault(evt => evt.Id.Equals(eventTypeId.ToString()));
-                                if (mathcingEvent is null)
-                                    continue;
-
-                                var dolittleEventFired = new DolittleEventFired
-                                {
-                                    EventLogOffset = eventOffset,
-                                    EventStore = _config.MongoConfig.MongoDB,
-                                    Aggregate = typeMap.Aggregate.Name,
-                                    EventName = mathcingEvent.Name,
-                                    Occurred = document["Metadata"]["Occurred"].ToLocalTime(),
-                                    Detected = DateTime.Now,
-                                };
-                                OnDolittleEventFired?.Invoke(this, dolittleEventFired);
-                            }
+                            ProcessDocumentForTypeMap(document, typeMap);
                         }
                         catch
                         {
                             /* See if Putin cares */
                         }
                     }
-                } while(cursor.MoveNext());
+                } while (cursor.MoveNext());
             });
+        }
+
+        private IMongoCollection<BsonDocument> CreateCollectionClient()
+        {
+            var client = CreateMongoClient();
+            var database = client.GetDatabase(_config.MongoConfig.MongoDB);
+
+            return database.GetCollection<BsonDocument>("event-log");
+        }
+
+        private void ProcessDocumentForTypeMap(BsonDocument document, DolittleTypeMap typeMap)
+        {
+            var eventOffset = document["_id"].AsInt64;
+            var aggregateId = document["Aggregate"]["TypeId"].AsGuid;
+            var eventTypeId = document["Metadata"]["TypeId"].AsGuid;
+
+            if (aggregateId != typeMap.Aggregate.Id)
+                return;
+
+            var mathcingEvent = typeMap.Events.FirstOrDefault(evt => evt.Id.Equals(eventTypeId.ToString()));
+            if (mathcingEvent is null)
+                return;
+
+            var dolittleEventFired = new DolittleEventFired
+            {
+                EventLogOffset = eventOffset,
+                EventStore = _config.MongoConfig.MongoDB,
+                Aggregate = typeMap.Aggregate.Name,
+                EventName = mathcingEvent.Name,
+                Occurred = document["Metadata"]["Occurred"].ToLocalTime(),
+                Detected = DateTime.Now,
+            };
+            OnDolittleEventFired?.Invoke(this, dolittleEventFired);
         }
 
         private IMongoClient CreateMongoClient()
