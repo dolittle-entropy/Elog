@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -15,24 +16,44 @@ namespace Elog
     [Command("run", Description = "Run Elog")]
     public class ElogCore
     {
-        static readonly IOutputWriter output = new ConsoleOutputWriter();
+        [Option(Description = "Name of the aggregate to inspect, i.e. 'Product'")]
+        public string AggregateName { get; set; } = string.Empty;
 
-        readonly ElogConfiguration _config;
+        [Option(Description = "Identity of the aggregate for which you want to see the event log", ShortName = "id")]
+        public string Id { get; set; } = Guid.Empty.ToString();
+
+        [Option(Description = "Display the payload of the event# ", ShortName = "n")]
+        public int EventNumber { get; set; } = -1;
+
+        readonly ElogConfiguration? _config;
 
         public ElogCore()
         {
             AnsiConsole.Clear();
             _config = LoadConfiguration();
+            if (_config is null)
+            {                
+                return;
+            }
         }
 
         public void OnExecute(CommandLineApplication app)
-        {            
-            var assemblyReader = new AssemblyReader(_config.BinariesPath, output);
+        {
+            var stopwatch = Stopwatch.StartNew();
+            if (_config is null)
+                return;
+
+            var assemblyReader = new AssemblyReader(_config.BinariesPath);
             assemblyReader.DiscoverDolittleTypes();
 
             if (AggregateName.Length > 0) // We are looking for a specific Aggregate
             {
                 var map = assemblyReader.GenerateMapForAggregate(AggregateName);
+                if(map is null)
+                {
+                    Ansi.Error($"Unable to map aggregate '{ColorAs.Value(AggregateName)}'. Operation cancelled");
+                    return;
+                }
 
                 if (Id != Guid.Empty.ToString()) // We didn't provide an EventSource Id, so we list all unique aggregates
                 {
@@ -48,19 +69,9 @@ namespace Elog
                 DisplayAggregateList(assemblyReader.DolittleAggregates);
             }
 
+            Ansi.Info($"Program finished in {stopwatch.ElapsedMilliseconds:### ###.0}ms");
+            AnsiConsole.Reset();
         }
-
-        [Option(Description = "Name of the aggregate to inspect, i.e. 'Product'")]
-        public string AggregateName { get; set; } = string.Empty;
-
-        [Option(Description = "Identity of the aggregate for which you want to see the event log", ShortName = "id")]
-        public string Id { get; set; } = Guid.Empty.ToString();
-
-        [Option(Description = "Display the payload of the event# ", ShortName = "evt")]
-        public int EventNumber { get; set; } = -1;
-
-        [Option(Description = "Name of configuration to load. Will load the first configuration if left blank")]
-        public string Configuration { get; set; } = string.Empty;
 
         ElogConfiguration? LoadConfiguration()
         {
@@ -68,7 +79,7 @@ namespace Elog
             var configurationFile = Path.Combine(configurationFolder, ElogConfiguration.ConfigurationFileName);
             if (!File.Exists(configurationFile))
             {
-                Ansi.Error("No configuration found! Run 'elog.exe configure' to create a configuration.\nA wizard will guide you through the values required");
+                Ansi.Error($"No configuration found! Run '{ColorAs.Value("elog config")}' to create your first configuration.{Environment.NewLine}");
                 return default;
             }
             var fileContents = File.ReadAllText(configurationFile);
@@ -103,16 +114,23 @@ namespace Elog
 
         static void DisplayAggregateList(IEnumerable<TypeMapping.DolittleAggregate> aggregates)
         {
-            var table = new Table()
-                .AddColumns("Aggregate", "Id");
-
-            foreach (var entry in aggregates)
+            if(aggregates?.Any() ?? false)
             {
-                table.AddRow(entry.Name, entry.Id.ToString());
+                var table = new Table()
+                    .AddColumns("Aggregate name", "Mapped to Id");
+
+                foreach (var entry in aggregates)
+                {
+                    table.AddRow(entry.Name, entry.Id.ToString());
+                }
+                Ansi.Info($"Found {aggregates.Count()} Aggregate Types:");
+                AnsiConsole.Write(table);
+                Ansi.Info($"Add '{ColorAs.Value("-a <aggregatename>")}' to see a list of individual aggregates{Environment.NewLine}");
             }
-            Ansi.Info($"Found {aggregates.Count()} Aggregate Types:");
-            AnsiConsole.Write(table);
-            Ansi.Info($"Add '{ColorAs.Value("-a <aggregatename>")}' to see a list of individual aggregates\n");
+            else
+            {
+                Ansi.Warning("No aggregates found");
+            }
         }
 
         async Task ListEventsForAggregate(TypeMapping.DolittleTypeMap map)
@@ -120,29 +138,35 @@ namespace Elog
             var reader = new EventStoreReader(
                 _config.MongoConfig.MongoServer,
                 _config.MongoConfig.Port,
-                _config.MongoConfig.MongoDB,
-                output);
+                _config.MongoConfig.MongoDB);
 
             var uniqueEventSources = await reader
                 .GetUniqueEventSources(map)
                 .ConfigureAwait(false);
 
-            var table = new Table()
-                .AddColumns("Aggregate", "Id", "Events");
-
-            table.Columns[2].RightAligned();
-
-            foreach (var uniqueEventSource in uniqueEventSources)
+            if(uniqueEventSources?.Any() ?? false)
             {
-                table.AddRow(
-                    uniqueEventSource.Aggregate,
-                    uniqueEventSource.Id.ToString(),
-                    uniqueEventSource.EventCount.ToString()
-                );
-            }
-            AnsiConsole.Write(table);
+                var table = new Table()
+                    .AddColumns("Aggregate", "Id", "Events");
 
-            output.Write($"{uniqueEventSources.Count()} unique Identities found for {map.Aggregate.Name}. \nAdd '-id <id>' to see their event log.\n");
+                table.Columns[2].RightAligned();
+
+                foreach (var uniqueEventSource in uniqueEventSources)
+                {
+                    table.AddRow(
+                        uniqueEventSource.Aggregate,
+                        uniqueEventSource.Id.ToString(),
+                        uniqueEventSource.EventCount.ToString()
+                    );
+                }
+                AnsiConsole.Write(table);
+                Ansi.Info($"{ColorAs.Value(uniqueEventSources.Count().ToString())} unique Identities found for {ColorAs.Value(map.Aggregate.Name)}. {Environment.NewLine}Add '-id <id>' to see their event log.\n");
+            }
+            else
+            {
+                Ansi.Warning($"No aggregates were found for type '{ColorAs.Value(map.Aggregate.Name)}'");
+            }
+
         }
 
         async Task ListUniqueIdentifiers(TypeMapping.DolittleTypeMap map)
@@ -150,8 +174,7 @@ namespace Elog
             var reader = new EventStoreReader(
                 _config.MongoConfig.MongoServer,
                 _config.MongoConfig.Port,
-                _config.MongoConfig.MongoDB,
-                output);
+                _config.MongoConfig.MongoDB);
 
             string guidId;
 
@@ -163,28 +186,24 @@ namespace Elog
 
             if (!matches.Any())
             {
-                output.Write(
-                    $"No event-sources-ids for the aggregate {map.Aggregate.Name} starts with {Id}."
-                );
+                Ansi.Warning($"No event-sources-ids for the aggregate {map.Aggregate.Name} starts with {Id}.");
                 return;
             }
             if (matches.Count() > 1)
             {
-                output.Write(
-                    $"Two or more event-sources for the aggregate {map.Aggregate.Name} starts with {Id}"
-                );
+                Ansi.Warning($"Two or more event-sources for the aggregate {map.Aggregate.Name} starts with {Id}");
                 return;
             }
 
             guidId = matches.First().Id;
-            output.Write($"Found single match for \"{Id}\": {guidId}{Environment.NewLine}");
+            Ansi.Success($"Found a match for {map.Aggregate.Name} #{Id}{Environment.NewLine}");
 
             var eventLog = (await reader.GetEventLog(map, guidId).ConfigureAwait(false)).ToList();
 
             if (EventNumber <= -1)
             {
-                output.Write($"\nEvent history for '{map.Aggregate.Name}' Id: {guidId}");
-                output.Divider();
+                Ansi.Info($"{Environment.NewLine}Event history for '{ColorAs.Value(map.Aggregate.Name)}' Id: {guidId}");
+                
                 var table = new Table()
                     .AddColumns("No.", "Aggregate", "Event", "Time");
                 var counter = 0;
@@ -196,22 +215,20 @@ namespace Elog
                 }
                 AnsiConsole.Write(table);
 
-                output.Write("Add '-evt <#>' to see the payload details of that event\n");
+                Ansi.Info($"Add '-n <#>' to see the payload of the event{Environment.NewLine}");
             }
             else
             {
                 if (EventNumber >= eventLog.Count)
                 {
-                    output.DisplayError($"The Event number values for this Event Source range from 0 t0 {eventLog.Count - 1} only.\n");
+                    Ansi.Error($"The Event number values for this Event Source range from 0 t0 {eventLog.Count - 1} only.{Environment.NewLine}");
                     return;
                 }
                 var rightEvent = eventLog.ToList()[EventNumber];
                 var json = JsonConvert.DeserializeObject(rightEvent.PayLoad);
-                output.Write($"Displaying Payload #{EventNumber} for aggregate {map.Aggregate.Name}:{Id}");
-                output.Write($"Event {EventNumber}: '{rightEvent.Event}' on {rightEvent.Time:dddd dd.MMMyyyy HH:mm:ss.ffff}");
-                output.Divider();
-                output.Write(json?.ToString() ?? "");
-                output.Divider();
+                Ansi.Info($"Displaying event number {ColorAs.Value(EventNumber.ToString())} from aggregate {ColorAs.Value(map.Aggregate.Name)} with id {ColorAs.Value(Id)}:");
+                Ansi.Info($"This event is of type {ColorAs.Value(rightEvent.Event)} and was applied on {ColorAs.Value(rightEvent.Time.ToString("dddd dd.MMMyyyy HH:mm:ss.ffff"))}");
+                Ansi.Content("JSON Content", json?.ToString() ?? ColorAs.Error("--NO CONTENT--"));                
             }
         }
 

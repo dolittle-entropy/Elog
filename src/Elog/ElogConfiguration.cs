@@ -10,6 +10,6 @@
 
         public bool IsDefault { get; set; }
 
-        public const string ConfigurationFileName = "elog.config";
+        public const string ConfigurationFileName = "elog-config.json";
     }
 }

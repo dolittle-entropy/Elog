@@ -1,6 +1,6 @@
 ﻿using Spectre.Console;
 
-namespace Elog
+namespace OutputWriting
 {
     public static class MessageColors
     {
@@ -8,6 +8,7 @@ namespace Elog
         public const string WarningColor = "[yellow]";
         public const string ErrorColor   = "[red]";
         public const string ValueColor   = "[orange1]";
+        public const string SuccessColor = "[green3]";
     }
 
     public static class ColorAs
@@ -16,6 +17,7 @@ namespace Elog
         public static string Warning(string message) => $"{MessageColors.WarningColor}{message}[/]";
         public static string Error(string message) => $"{MessageColors.ErrorColor}{message}[/]";
         public static string Value(string message) => $"{MessageColors.ValueColor}{message}[/]";
+        public static string Success(string message) => $"{MessageColors.SuccessColor}{message}[/]";
     }
 
     public static class Ansi
@@ -28,5 +30,23 @@ namespace Elog
 
         public static void Error(string message)
             => AnsiConsole.MarkupLine(ColorAs.Error(message));
+
+        public static void Success(string message)
+            => AnsiConsole.MarkupLine(ColorAs.Success(message));
+
+        public static void Content(string title, string message)
+        {
+            var style = Style.Parse("red dim");
+            var titleRule = new Rule(title);
+            titleRule.Style = style;
+            AnsiConsole.Write(titleRule);
+            
+            Info(message);
+
+            var bottomRule = new Rule();
+            bottomRule.Style = style;
+            AnsiConsole.Write(bottomRule);
+
+        }
     }
 }

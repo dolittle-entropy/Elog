@@ -1,10 +1,10 @@
-﻿using MongoDB.Bson;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using OutputWriting;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using TypeMapping;
 
 namespace MongoDbReading
@@ -13,15 +13,11 @@ namespace MongoDbReading
     {
         protected static readonly BsonDocument Blank_Filter = new();
 
-        readonly MongoClient _mongoClient;
-
-        IOutputWriter Out { get; }
-
+        readonly MongoClient _mongoClient;       
         readonly IMongoCollection<BsonDocument> _collection;
 
-        public EventStoreReader(string server, int port, string database, IOutputWriter outputWriter)
-        {
-            Out = outputWriter;
+        public EventStoreReader(string server, int port, string database)
+        {            
             var mongoServerAddress = new MongoServerAddress(server, port);
             var settings = new MongoClientSettings
             {
@@ -38,13 +34,13 @@ namespace MongoDbReading
             }
             catch (Exception ex)
             {
-                Out.DisplayError(ex.Message);
+                Ansi.Error(ex.Message);
             }
         }
 
         public async Task<IEnumerable<EventSource>> GetUniqueEventSources(DolittleTypeMap map)
         {
-            Out.Write($"Searching the eventlog for unique aggregates of {map.Aggregate.Name}...");
+            Ansi.Info($"Scanning eventlog for events produced by {ColorAs.Value(map.Aggregate.Name)}...");
 
             // Dirty, but works :)
             var wrappedId = $"UUID(\"{map.Aggregate.Id}\")";
@@ -78,7 +74,7 @@ namespace MongoDbReading
 
         public async Task<IEnumerable<EventEntry>> GetEventLog(DolittleTypeMap map, string id)
         {
-            Out.Write("Reading the eventlog...");
+            Ansi.Info("Reading the eventlog...");
 
             var aggregateId = $"UUID(\"{map.Aggregate.Id}\")";
             var eventSourceId = $"\"{id}\"";
@@ -109,7 +105,7 @@ namespace MongoDbReading
         {
             if (_collection is null)
             {
-                Out.DisplayError("Unable to find any records using the provided MongoDB settings");
+                Ansi.Error("Unable to find any records using the provided MongoDB settings");
                 return false;
             }
             return true;

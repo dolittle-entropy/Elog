@@ -4,8 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
 using OutputWriting;
 using Spectre.Console;
 using TypeMapping;
@@ -52,26 +50,25 @@ namespace AssemblyReading
         readonly List<DolittleEvent> _eventList;
         readonly List<DolittleProjection> _projectionList;
 
-        IOutputWriter Out { get; }
-
-        public AssemblyReader(string dolittleAssemblyFolder, IOutputWriter outputWriter)
+        public AssemblyReader(string dolittleAssemblyFolder)
         {
             const string ExpectedAssemblyName = "Dolittle.SDK.Aggregates.dll";
 
             _assemblyFolder = dolittleAssemblyFolder;
             _aggregateRootPath = Path.Combine(_assemblyFolder, ExpectedAssemblyName);
+            var eventTypePath = Path.Combine(_assemblyFolder, "Dolittle.SDK.Events.dll");
             if (!File.Exists(_aggregateRootPath))
                 throw new FileNotFoundException(nameof(_aggregateRootPath));
 
             var resolver = new PathAssemblyResolver(new List<string>(Directory.GetFiles(RuntimeEnvironment.GetRuntimeDirectory(), "*.dll"))
                     {
-                        _aggregateRootPath
+                        _aggregateRootPath,
+                        eventTypePath
                     });
             _metadataContext = new MetadataLoadContext(resolver);
             _aggregateList = new List<DolittleAggregate>();
             _eventList = new List<DolittleEvent>();
             _projectionList = new List<DolittleProjection>();
-            Out = outputWriter;
         }
 
         public List<DolittleAggregate> DolittleAggregates => _aggregateList;
@@ -94,7 +91,7 @@ namespace AssemblyReading
 
             if (typeMap.Aggregate is { })
             {
-                Out.Write($"Aggregate '{typeMap.Aggregate.Name}', {typeMap.Aggregate.Id}.\nEventTypes found in binaries folder: {typeMap.Events.Count}");
+                Ansi.Info($"Aggregate '{ColorAs.Value(typeMap.Aggregate.Name)}', {ColorAs.Value(typeMap.Aggregate.Id.ToString())}.{Environment.NewLine}EventTypes found in binaries folder: {ColorAs.Value(typeMap.Events.Count.ToString())}");
             }
             return typeMap;
         }
@@ -133,7 +130,7 @@ namespace AssemblyReading
                     var typesTask = ctx.AddTask($"{fileInfo.Name}:");
                     foreach (var type in types)
                     {
-                        typesTask.Increment(typeStep);
+                        typesTask.Increment(typeStep);                        
                         try
                         {
                             if (MapTypeToAggregateRoot(type))
@@ -197,8 +194,9 @@ namespace AssemblyReading
                     return false;
 
                 _aggregateList.Add(new DolittleAggregate { Id = Guid.Parse(aggregateRootId), Name = type.Name });
+                return true;
             }
-            return true;
+            return false;
         }
 
         List<string> LoadDllFiles()

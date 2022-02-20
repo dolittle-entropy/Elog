@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace TypeMapping
+﻿namespace TypeMapping
 {
     public record DolittleEvent
     {

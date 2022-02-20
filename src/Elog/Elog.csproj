@@ -2,10 +2,11 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
     <TargetFramework>net6.0</TargetFramework>
     <PackAsTool>true</PackAsTool>    
-    <AssemblyVersion>1.0.0.5</AssemblyVersion>
-    <FileVersion>1.0.0.5</FileVersion>
+    <AssemblyVersion>1.0.0.6</AssemblyVersion>
+    <FileVersion>1.0.0.6</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Authors>Dolittle AS/digitaldias</Authors>
     <Company>Dolittle AS</Company>
@@ -17,14 +18,14 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>elog</ToolCommandName>
     <PackageIcon>dolittle_positiv_kvadratisk@4x_RGB.png</PackageIcon>
-    <Version>1.0.5</Version>
+    <Version>1.0.6</Version>
     <NeutralLanguage>en</NeutralLanguage>
     <Platforms>AnyCPU;x86;x64</Platforms>
     <RepositoryType>git</RepositoryType>
     <PackageReleaseNotes>
-      This version of Elog supports Dolitle.SDK 13.0.0 and later only. 
-      In this release, a small bug was fixed that addresses reading events
-      from common libraries. 
+      This version of Elog supports Dolitle.SDK 13.0.0 and later. 
+      Elog now reads assemblies using metadata only, and should be less prone to crashing. 
+      Elog also uses Spectre.Console now for more colorful responses and prompts.       
     </PackageReleaseNotes>
     <PackageId>Dolittle.Elog</PackageId>
   </PropertyGroup>
