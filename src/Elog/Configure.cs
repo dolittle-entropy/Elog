@@ -11,7 +11,7 @@ using Spectre.Console;
 
 namespace Elog
 {
-    [Command("configure", Description = "elWhen no parameters are given, a wizard will help you create a new configuration.")]
+    [Command("configure", Description = "If no parameters are given, a wizard will help you create a new configuration.")]
     public class Configure
     {
         [Option(Description = "Lists your configurations")]
@@ -22,6 +22,9 @@ namespace Elog
 
         [Option(Description = "Change default configuration")]
         public bool ChangeDefault { get; set; }
+
+        [Option(Description = "Edit an existing configuration")]
+        public bool EditConfiguration { get; set; }
 
         const string ConfigurationFileName = "elog.config";
 
@@ -35,13 +38,19 @@ namespace Elog
             _configurationFile = Path.Combine(applicationFolder, ConfigurationFileName);
         }
 
+        static string InformationString(string content) => $"[green]{content}[/]";
+        static string WarningString(string content) => $"[yellow]{content}[/]";
+        static string ErrorString(string content) => $"[red]{content}[/]";
+
         // warnings that the parameter is not used and can be removed
-#pragma warning disable RCS1163, IDE0060
+        #pragma warning disable RCS1163, IDE0060
+
         public void OnExecute(CommandLineApplication app)
         {
             if (List) { DisplayConfigurations(); return; }
             if (Delete) { DeleteConfiguration(); return; }
             if (ChangeDefault) { ChangeDefaultConfiguration(); return; }
+            if (EditConfiguration) { EditSomeConfiguration(); return; }
 
             Console.WriteLine("");
 
@@ -50,7 +59,65 @@ namespace Elog
             {
                 AnsiConsole.MarkupLine("Configuration [yellow]aborted[/]");
                 return;
-            }            
+            }
+        }
+        #pragma warning restore RCS1163, IDE0060
+
+        private void EditSomeConfiguration()
+        {
+            const string cancelMessage = "[red]* Cancel[/]";
+            const string marker = "[yellow] *active*[/]";
+                        
+            var configurations = LoadConfiguration();
+            var list = new List<string>();
+            list.Add(cancelMessage);
+            list.AddRange(configurations.Select(c => c.IsDefault ? $"{c.Name}{marker}" : c.Name));
+
+            var editConfigName = AnsiConsole.Prompt(new SelectionPrompt<string>()
+                    .PageSize(10)
+                    .Title($"Select configuration to edit:")
+                    .MoreChoicesText("[green]* scroll with your arrow keys to see more[/]")
+                    .AddChoices(list));
+
+            if (editConfigName.Equals(cancelMessage))
+            {
+                AnsiConsole.MarkupLine(WarningString("Edit configuration cancelled."));
+                return;
+            }
+            editConfigName = editConfigName.Replace(marker, "");
+            var configToEdit = PopConfiguration(configurations, editConfigName);
+            if (configToEdit is null)
+                AnsiConsole.MarkupLine($"ERROR: Configuration '{editConfigName}' not found");
+
+            AnsiConsole.MarkupLine($"Editing configuration '{InformationString(editConfigName)}'.\nInput new values, or hit [[Enter]] to accept their current values:\n");
+            configToEdit.Name = AnsiConsole.Ask("Configuration name:", configToEdit.Name);
+            configToEdit.IsDefault = AnsiConsole.Confirm("Make this the default configuration?", configToEdit.IsDefault);
+            configToEdit.MongoConfig.MongoServer = AnsiConsole.Ask("MongoDb server:", configToEdit.MongoConfig.MongoServer);
+            configToEdit.MongoConfig.MongoDB = AnsiConsole.Ask("EventStore Database name:", configToEdit.MongoConfig.MongoDB);
+            configToEdit.MongoConfig.Port = AnsiConsole.Ask("EventStore Database port:", configToEdit.MongoConfig.Port);                       
+            configToEdit.BinariesPath = AnsiConsole.Ask("Path to binaries:", configToEdit.BinariesPath);
+            while(!Directory.Exists(configToEdit.BinariesPath))
+            {
+                AnsiConsole.MarkupLine($"{ErrorString("ERROR: Directory does not exist:")} {configToEdit.BinariesPath}");
+                configToEdit.BinariesPath = AnsiConsole.Ask("Path to binaries:", configToEdit.BinariesPath);
+            }
+
+            if(TestConfiguration(configToEdit))
+            {
+
+            }
+            return;
+        }
+
+        ElogConfiguration? PopConfiguration(List<ElogConfiguration> configurations, string configurationName)
+        {
+            var matchingConfiguration = configurations.FirstOrDefault(c => c.Name.Equals(configurationName, StringComparison.InvariantCultureIgnoreCase));
+            if(matchingConfiguration is { })
+            {
+                configurations.Remove(matchingConfiguration);
+                return matchingConfiguration;
+            }
+            return null;
         }
 
         private void ChangeDefaultConfiguration()
@@ -64,17 +131,17 @@ namespace Elog
             list.AddRange(configurations.Select(c => c.IsDefault ? $"{c.Name}{marker}" : c.Name));
             var newDefaultConfigName = AnsiConsole.Prompt(new SelectionPrompt<string>()
                     .PageSize(10)
-                    .Title($"Select new default configuration:")
+                    .Title($"Select the configuration to edit:")
                     .MoreChoicesText("[green]* scroll with your arrow keys to see more[/]")
                     .AddChoices(list));
 
-            if(newDefaultConfigName.Equals(cancelMessage))
+            if (newDefaultConfigName.Equals(cancelMessage))
             {
                 AnsiConsole.MarkupLine(WarningString("Canceled default selection"));
                 return;
             }
 
-            if(newDefaultConfigName.EndsWith(marker))
+            if (newDefaultConfigName.EndsWith(marker))
                 newDefaultConfigName = newDefaultConfigName.Replace(marker, "");
 
             var yesDoIt = AnsiConsole.Confirm($"Make '{WarningString(newDefaultConfigName)}' your new default config?", true);
@@ -87,19 +154,18 @@ namespace Elog
             for (int i = 0; i < configurations.Count; i++)
             {
                 configurations[i].IsDefault = false;
-                if(configurations[i].Name.Equals(newDefaultConfigName))
+                if (configurations[i].Name.Equals(newDefaultConfigName))
                     configurations[i].IsDefault = true;
             }
 
             AnsiConsole.Status().Start("Writing new configuration", ctx =>
-            {                
+            {
                 Thread.Sleep(500);
                 WriteConfiguration(configurations);
             });
             AnsiConsole.MarkupLine($"Done. '{InformationString(newDefaultConfigName)}' is now the default configuration");
 
         }
-#pragma warning restore RCS1163, IDE0060
 
         private void DeleteConfiguration()
         {
@@ -115,12 +181,12 @@ namespace Elog
                     .MoreChoicesText("[green]* scroll with your arrow keys to see more[/]")
                     .AddChoices(list));
 
-            if(configurationToDelete.Equals(cancelMessage))
+            if (configurationToDelete.Equals(cancelMessage))
             {
                 AnsiConsole.MarkupLine("[yellow]Delete operation aborted[/]");
                 return;
             }
-            
+
             var selectedConfiguration = configurations.First(c => c.Name.Equals(configurationToDelete));
             if (selectedConfiguration is { })
             {
@@ -142,10 +208,11 @@ namespace Elog
             }
 
             var yesDelete = AnsiConsole.Confirm($"Ready to delete configuration '{configurationToDelete}'?", false);
-            if(yesDelete)
+            if (yesDelete)
             {
                 WriteConfiguration(configurations);
-                AnsiConsole.Status().Start("Writing new configuration", ctx =>{
+                AnsiConsole.Status().Start("Writing new configuration", ctx =>
+                {
                     Thread.Sleep(1000);
                     AnsiConsole.MarkupLine("Configuration updated");
                 });
@@ -156,7 +223,7 @@ namespace Elog
             }
             return;
         }
-
+        
         private void DisplayConfigurations()
         {
             var savedConfigs = LoadConfiguration();
@@ -166,7 +233,7 @@ namespace Elog
                 .Border(TableBorder.Rounded)
                 .RoundedBorder()
                 .AddColumn("Config")
-                .AddColumn("Solution")
+                .AddColumn("Solution(s)")
                 .AddColumn("Server")
                 .AddColumn("EventStoreDb")
                 .AddColumn("Port")
@@ -177,76 +244,105 @@ namespace Elog
 
             foreach (var config in savedConfigs)
             {
-                ansiTable.AddRow(                    
-                    config.IsDefault ? InformationString(config.Name) : config.Name,
-                    config.IsDefault ? InformationString(FindSolutionNameInBinariesPath(config.BinariesPath)) : FindSolutionNameInBinariesPath(config.BinariesPath),
-                    config.IsDefault ? InformationString(config.MongoConfig.MongoServer) : config.MongoConfig.MongoServer,
-                    config.IsDefault ? InformationString(config.MongoConfig.MongoDB) : config.MongoConfig.MongoDB,
-                    config.IsDefault ? InformationString(config.MongoConfig.Port.ToString()) : config.MongoConfig.Port.ToString(),
-                    config.IsDefault ? InformationString("yes") : "");
+                var solutionName = FindSolutionNameInBinariesPath(config.BinariesPath);
+                if(solutionName.Contains("-Bad Path-"))
+                {
+                    ansiTable.AddRow(
+                        ErrorString(config.Name),
+                        ErrorString(solutionName),
+                        ErrorString(config.MongoConfig.MongoServer),
+                        ErrorString(config.MongoConfig.MongoDB),
+                        ErrorString(config.MongoConfig.Port.ToString()),
+                        ErrorString("")); 
+                }
+                else
+                {
+                    ansiTable.AddRow(
+                        config.IsDefault ? InformationString(config.Name) : config.Name,
+                        config.IsDefault ? InformationString(solutionName) : solutionName,
+                        config.IsDefault ? InformationString(config.MongoConfig.MongoServer) : config.MongoConfig.MongoServer,
+                        config.IsDefault ? InformationString(config.MongoConfig.MongoDB) : config.MongoConfig.MongoDB,
+                        config.IsDefault ? InformationString(config.MongoConfig.Port.ToString()) : config.MongoConfig.Port.ToString(),
+                        config.IsDefault ? InformationString("yes") : "");
+                }
             }
             AnsiConsole.Write(ansiTable);
             AnsiConsole.MarkupLine($"[green]{savedConfigs.Count}[/] configurations found");
         }
-        
-        private string InformationString(string content) => $"[green]{content}[/]";
-        private string WarningString(string content) => $"[yellow]{content}[/]";
-        private string ErrorString(string content) => $"[red]{content}[/]";
 
         static string FindSolutionNameInBinariesPath(string binariesPath)
         {
-            var bits = binariesPath.Split('\\');
-            if (bits.Length == 1)
+            var startFolder = new DirectoryInfo(binariesPath);
+            if(!startFolder.Exists)
             {
-                // Support mac/linux paths
-                bits = binariesPath.Split('/');
+                return ErrorString("-Bad Path-");
+            }
+            while (startFolder.Parent is DirectoryInfo && startFolder.GetFiles("*.sln").Length == 0)
+                startFolder = startFolder.Parent;
+
+            if (startFolder is null)
+            {
+                AnsiConsole.MarkupLine(ErrorString("No solution files found in path"));
+                return String.Empty;
             }
 
-            for (var i = bits.Length - 1; i > 0; i--)
-            {
-                if (bits[i].Equals("bin"))
-                {
-                    return bits[i - 2];
-                }
-            }
-            return string.Empty;
+            var solutionFiles = startFolder.GetFiles("*.sln");
+            if(solutionFiles.Length == 1)
+                return solutionFiles[0].Name.Replace(".sln", "");
+
+            return string.Join("", solutionFiles.Select(s => s.Name.Replace(".sln", "\n")));
         }
 
         bool TestConfiguration(ElogConfiguration config)
         {
-            const string KeyDolittleSDKFile = "Dolittle.SDK.Aggregates.dll";
-            var filePath = Path.Combine(config.BinariesPath, KeyDolittleSDKFile);
-            if (!File.Exists(filePath))
-            {
-                AnsiConsole.MarkupLine($"The folder [yellow]'{config.BinariesPath}'[/] does not contain the key file [yellow]'{KeyDolittleSDKFile}'[/]. Configuration fails!");
-                return false;
-            }
+            const string KeyDolittleSDKFile = "Dolittle.SDK.*";
+            bool passed = false;
+            AnsiConsole.Status().Start($"Checking {config.BinariesPath}", ctx =>
+            {                
+                var folder = new DirectoryInfo(config.BinariesPath);
+                if (folder.GetFiles(KeyDolittleSDKFile).Length == 0)
+                {
+                    AnsiConsole.MarkupLine($"The folder [yellow]'{config.BinariesPath}'[/] does not contain any files [yellow]'{KeyDolittleSDKFile}'[/]. Configuration fails!");
+                    return;
+                }
+                Thread.Sleep(500);
+                
+                ctx.Status("Testing connection to MongoDb");
+                var eventStoreReader = new EventStoreReader(
+                    config.MongoConfig.MongoServer,
+                    config.MongoConfig.Port,
+                    config.MongoConfig.MongoDB,
+                    _out);
 
-            var eventStoreReader = new EventStoreReader(
-                config.MongoConfig.MongoServer,
-                config.MongoConfig.Port,
-                config.MongoConfig.MongoDB,
-                _out);
+                if(!eventStoreReader.ConnectionWorks())
+                {
+                    AnsiConsole.MarkupLine($"Unable to connect to mongo using '{config.MongoConfig.MongoServer}.{config.MongoConfig.MongoDB}:{config.MongoConfig.Port}'");
+                    return;
+                }
+                Thread.Sleep(500);
 
-            return eventStoreReader.ConnectionWorks();
+                ctx.Status("Cleaning up");
+                Thread.Sleep(500);
+            });
+            return passed;
         }
 
-        private ElogConfiguration PromptForConfiguration()
+        ElogConfiguration PromptForConfiguration()
         {
             var currentConfig = LoadConfiguration();
             if (currentConfig == null)
                 currentConfig = new List<ElogConfiguration>();
-            
+
             // Get config name or fail
             var configName = GetConfigurationName(currentConfig);
-            if(string.IsNullOrEmpty(configName))
+            if (string.IsNullOrEmpty(configName))
                 return null;
 
             // Get mongo settings
             var mongoServer = AnsiConsole.Ask("MongoDB [yellow]ServerInstance[/]          : ", "localhost");
             var mongoDB = AnsiConsole.Ask("MongoDB Database [yellow]name[/]           : ", "event_store");
             var mongoPort = AnsiConsole.Ask("[yellow]Port[/] to use                     : ", 27017);
-            
+
             // Get binaries folder
             var pathToBinaries = AnsiConsole.Ask("Complete [yellow]path[/] to binaries folder: ", "C:\\dev");
             while (!Directory.Exists(pathToBinaries))
@@ -284,7 +380,7 @@ namespace Elog
                 }
 
                 ctx.Status("Applying the new configuration...");
-                if(makeDefaultConfig)
+                if (makeDefaultConfig)
                 {
                     for (int i = 0; i < currentConfig.Count; i++)
                         currentConfig[i].IsDefault = false;
@@ -304,7 +400,7 @@ namespace Elog
             return null;
         }
 
-        private static string GetConfigurationName(List<ElogConfiguration> currentConfig)
+        static string GetConfigurationName(List<ElogConfiguration> currentConfig)
         {
             var configName = AnsiConsole.Ask("What will you [yellow]name[/] your configuration?", "default");
 
@@ -329,7 +425,7 @@ namespace Elog
             return configName;
         }
 
-        private static string RenameConfiguration(List<ElogConfiguration> currentConfig, string configName)
+        static string RenameConfiguration(List<ElogConfiguration> currentConfig, string configName)
         {
             var newName = configName;
             do

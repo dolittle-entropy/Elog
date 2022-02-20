@@ -4,7 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using OutputWriting;
+using Spectre.Console;
 using TypeMapping;
 
 namespace AssemblyReading
@@ -87,7 +90,7 @@ namespace AssemblyReading
                 return null;
 
             typeMap.Aggregate = aggregate;
-            typeMap.Events = _eventList;            
+            typeMap.Events = _eventList;
 
             if (typeMap.Aggregate is { })
             {
@@ -101,33 +104,55 @@ namespace AssemblyReading
         /// </summary>
         public void DiscoverDolittleTypes()
         {
+
             var dllFiles = LoadDllFiles();
-
-            foreach (var dllFilePath in dllFiles)
-            {
-                Type[] types;
-                var assembly = _metadataContext.LoadFromAssemblyPath(dllFilePath);
-                types = assembly.GetTypes();
-
-                foreach (var type in types)
+            double fileStep = 100.0 / dllFiles.Count;
+            AnsiConsole.Progress()
+                .AutoRefresh(true) // Turn off auto refresh
+                .AutoClear(true)   // Do not remove the task list when done
+                .HideCompleted(true)   // Hide tasks as they are completed                
+                .Columns(new ProgressColumn[]
                 {
-                    try
-                    {
-                        if (MapTypeToAggregateRoot(type))
-                            continue;
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                    new SpinnerColumn(),
+                })
+                .Start(ctx =>
+            {
+                var fileTask = ctx.AddTask($"Examining {dllFiles.Count} DLL files:");
+                foreach (var dllFilePath in dllFiles)
+                {
+                    fileTask.Increment(fileStep);
+                    Type[] types;
+                    var assembly = _metadataContext.LoadFromAssemblyPath(dllFilePath);
+                    types = assembly.GetTypes();
+                    double typeStep = 100.0 / types.Length;
 
-                        if (MapTypeToDolittleEvent(type))
-                            continue;
-
-                        if (MapTypeToDolittleProjection(type))
-                            continue;
-                    }
-                    catch
+                    var fileInfo = new FileInfo(dllFilePath);
+                    var typesTask = ctx.AddTask($"{fileInfo.Name}:");
+                    foreach (var type in types)
                     {
-                        continue;
+                        typesTask.Increment(typeStep);
+                        try
+                        {
+                            if (MapTypeToAggregateRoot(type))
+                                continue;
+
+                            if (MapTypeToDolittleEvent(type))
+                                continue;
+
+                            if (MapTypeToDolittleProjection(type))
+                                continue;
+                        }
+                        catch
+                        {
+                            continue;
+                        }
                     }
+                    typesTask.Value = 100.0;                    
                 }
-            }
+            });
         }
 
         private bool MapTypeToDolittleEvent(Type type)
@@ -139,7 +164,7 @@ namespace AssemblyReading
             var eventTypeId = eventTypeAttribute.ConstructorArguments[0].Value.ToString();
             if (string.IsNullOrEmpty(eventTypeId))
                 return false;
-            
+
             _eventList.Add(new DolittleEvent { Name = type.Name, Id = eventTypeId });
             return true;
         }

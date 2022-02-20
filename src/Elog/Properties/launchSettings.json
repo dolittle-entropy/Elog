@@ -2,7 +2,7 @@
   "profiles": {
     "Elog": {
       "commandName": "Project",
-      "commandLineArgs": "configure -d"
+      "commandLineArgs": "-a WorkOrderAggregate"
     }
   }
 }

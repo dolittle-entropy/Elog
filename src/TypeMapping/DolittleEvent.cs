@@ -2,10 +2,11 @@
 
 namespace TypeMapping
 {
-    [DebuggerDisplay("{Name}:{Id}")]
-    public class DolittleEvent
+    public record DolittleEvent
     {
         public string Id { get; set; }
         public string Name { get; set; }
+
+        public const string AttributeName = "EventTypeAttribute";
     }
 }
