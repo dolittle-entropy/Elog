@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -11,24 +12,30 @@ using MongoDbReading;
 using Newtonsoft.Json;
 using OutputWriting;
 using Spectre.Console;
+using Spectre.Console.Cli;
+using sp = Spectre.Console.Cli;
 
-namespace Elog
+namespace Elog.Commands
 {
-    [Command(Description = "Manage your Elog configurations", FullName = "Elog Configuration", Name = "config")]
-    public class Configure
+
+    public class ConfigureSettings : CommandSettings
     {
-        [Option(Description = "Create a new Configuration")]
+
+        [CommandOption("-c|--create")]
         public bool Create { get; set; }
 
-        [Option(Description = "Select a configuration to delete")]
+        [CommandOption("-d|--delete")]
         public bool Delete { get; set; }
 
-        [Option(Description = "Change active configuration")]
+        [CommandOption("-a|--active")]
         public bool ActiveConfiguration { get; set; }
 
-        [Option(Description = "Edit an existing configuration")]
+        [CommandOption("-e|--edit")]
         public bool Update { get; set; }
+    }
 
+    public class Configure : sp.Command<ConfigureSettings>
+    {
         const string ConfigurationFileName = "elog-config.json";
 
         readonly string _configurationFile;
@@ -39,16 +46,17 @@ namespace Elog
             _configurationFile = Path.Combine(applicationFolder, ConfigurationFileName);
         }
 
-        public void OnExecute(CommandLineApplication app)
+        public override int Execute([NotNull] CommandContext context, [NotNull] ConfigureSettings settings)
         {
-            if (Create) { CreateConfiguration(false); return; }
-            if (Delete) { DeleteConfiguration(); return; }
-            if (ActiveConfiguration) { ChangeDefaultConfiguration(); return; }
-            if (Update) { EditSomeConfiguration(); return; }
+            if (settings.Create) { CreateConfiguration(false); return 0; }
+            if (settings.Delete) { DeleteConfiguration(); return 0; }
+            if (settings.ActiveConfiguration) { ChangeDefaultConfiguration(); return 0; }
+            if (settings.Update) { EditSomeConfiguration(); return 0; }
 
             Console.WriteLine("");
             DisplayConfigurations();
-            app.ShowHelp();
+
+            return 0;
         }
 
         private void CreateConfiguration(bool firstTime)
@@ -56,7 +64,7 @@ namespace Elog
 
             if (!PromptForConfiguration(firstTime))
             {
-                Ansi.Warning("Configuration abandoned");
+                Out.Warning("Configuration abandoned");
                 return;
             }
         }
@@ -79,7 +87,7 @@ namespace Elog
 
             if (editConfigName.Equals(cancelMessage))
             {
-                Ansi.Warning("Edit configuration cancelled");
+                Out.Warning("Edit configuration cancelled");
                 return;
             }
             editConfigName = editConfigName.Replace(marker, "");
@@ -96,7 +104,7 @@ namespace Elog
             configToEdit.BinariesPath = AnsiConsole.Ask("Path to binaries:", configToEdit.BinariesPath);
             while (!Directory.Exists(configToEdit.BinariesPath))
             {
-                Ansi.Error($"ERROR: Directory does not exist: {ColorAs.Value(configToEdit.BinariesPath)}");
+                Out.Error($"ERROR: Directory does not exist: {ColorAs.Value(configToEdit.BinariesPath)}");
                 configToEdit.BinariesPath = AnsiConsole.Ask("Path to binaries:", configToEdit.BinariesPath);
             }
 
@@ -136,7 +144,7 @@ namespace Elog
 
             if (newDefaultConfigName.Equals(cancelMessage))
             {
-                Ansi.Warning("Canceled active configuration selection");
+                Out.Warning("Canceled active configuration selection");
                 return;
             }
 
@@ -146,11 +154,11 @@ namespace Elog
             var yesDoIt = AnsiConsole.Confirm($"Make '{ColorAs.Value(newDefaultConfigName)}' your active configuration?", true);
             if (!yesDoIt)
             {
-                Ansi.Warning("Ok. Canceled selection of active configuration");
+                Out.Warning("Ok. Canceled selection of active configuration");
                 return;
             }
 
-            for (int i = 0; i < configurations.Count; i++)
+            for (var i = 0; i < configurations.Count; i++)
             {
                 configurations[i].IsDefault = false;
                 if (configurations[i].Name.Equals(newDefaultConfigName))
@@ -162,7 +170,7 @@ namespace Elog
                 Thread.Sleep(500);
                 WriteConfiguration(configurations);
             });
-            Ansi.Info($"Done. '{ColorAs.Value(newDefaultConfigName)}' is now the active configuration");
+            Out.Info($"Done. '{ColorAs.Value(newDefaultConfigName)}' is now the active configuration");
         }
 
         private void DeleteConfiguration()
@@ -227,14 +235,14 @@ namespace Elog
             var savedConfigs = LoadConfigurations();
             if (!savedConfigs?.Any() ?? true)
             {
-                Ansi.Warning("No configurations found. Starting the configuration wizard");
+                Out.Warning("No configurations found. Starting the configuration wizard");
                 CreateConfiguration(firstTime: true);
                 return;
             }
 
             AnsiConsole.MarkupLine($"Configuration loaded from [yellow]{_configurationFile}[/]");
 
-            var ansiTable = new Spectre.Console.Table()
+            var ansiTable = new Table()
                 .Border(TableBorder.Square)
                 .AddColumn("Configuration name")
                 .AddColumn("Solution(s)")
@@ -286,8 +294,8 @@ namespace Elog
 
             if (startFolder is null)
             {
-                Ansi.Error("No solution files found in path");
-                return String.Empty;
+                Out.Error("No solution files found in path");
+                return string.Empty;
             }
 
             var solutionFiles = startFolder.GetFiles("*.sln");
@@ -304,7 +312,7 @@ namespace Elog
             var folder = new DirectoryInfo(config.BinariesPath);
             if (folder.GetFiles(KeyDolittleSDKFile).Length == 0)
             {
-                Ansi.Error($"The folder '{ColorAs.Value(config.BinariesPath)}' does not contain any files mathcing the pattern '{ColorAs.Value(KeyDolittleSDKFile)}'");
+                Out.Error($"The folder '{ColorAs.Value(config.BinariesPath)}' does not contain any files mathcing the pattern '{ColorAs.Value(KeyDolittleSDKFile)}'");
                 return false;
             }
             var eventStoreReader = new EventStoreReader(
@@ -314,7 +322,7 @@ namespace Elog
 
             if (!eventStoreReader.ConnectionWorks())
             {
-                Ansi.Error($"Unable to connect to mongo using '{config.MongoConfig.MongoServer}.{config.MongoConfig.MongoDB}:{config.MongoConfig.Port}'");
+                Out.Error($"Unable to connect to mongo using '{config.MongoConfig.MongoServer}.{config.MongoConfig.MongoDB}:{config.MongoConfig.Port}'");
                 return false;
             }
             return true;
@@ -346,11 +354,11 @@ namespace Elog
             var pathToBinaries = AnsiConsole.Ask("Complete path to binaries folder: ", "C:\\dev");
             while (!Directory.Exists(pathToBinaries))
             {
-                Ansi.Error($"Path does not exist: {ColorAs.Value(pathToBinaries)}");
+                Out.Error($"Path does not exist: {ColorAs.Value(pathToBinaries)}");
                 pathToBinaries = AnsiConsole.Ask("Complete path to binaries folder: ", "C:\\dev");
             }
             // Ask if this should be the new default
-            bool makeDefaultConfig = false;
+            var makeDefaultConfig = false;
             if (firstConfiguration)
                 makeDefaultConfig = true;
             else
@@ -385,7 +393,7 @@ namespace Elog
                 ctx.Status("Applying the new configuration...");
                 if (makeDefaultConfig)
                 {
-                    for (int i = 0; i < allConfigurations.Count; i++)
+                    for (var i = 0; i < allConfigurations.Count; i++)
                         allConfigurations[i].IsDefault = false;
 
                     resultingConfiguration.IsDefault = true;
@@ -408,7 +416,7 @@ namespace Elog
             var eventStoreNames = GetEventStoreDatabaseNames(mongoServer, mongoPort);
             if (!eventStoreNames?.Any() ?? true)
             {
-                return String.Empty;
+                return string.Empty;
             }
 
             var choiceDetail = ColorAs.Value($"Found {eventStoreNames.Count} Event Stores. Select with up/down, confirm with ENTER");
@@ -422,7 +430,7 @@ namespace Elog
                 .MoreChoicesText("Use the up/down keys to see more")
                 );
 
-            Ansi.Info($"Selected EventStore database: {ColorAs.Success(chosenEventStore)}");
+            Out.Info($"Selected EventStore database: {ColorAs.Success(chosenEventStore)}");
             return chosenEventStore;
         }
 
@@ -444,7 +452,7 @@ namespace Elog
             }
             catch (Exception ex)
             {
-                Ansi.Error($"Unable to connecto to server {ColorAs.Value(mongoServer)} using port {ColorAs.Value(mongoPort.ToString())}");
+                Out.Error($"Unable to connecto to server {ColorAs.Value(mongoServer)} using port {ColorAs.Value(mongoPort.ToString())}: {Environment.NewLine}{ex.StackTrace}");
                 return eventStoreDatabaseNames;
             }
 
@@ -465,7 +473,7 @@ namespace Elog
                 }
             }
             if (!eventStoreDatabaseNames.Any())
-                Ansi.Error($"No eventstores found in {ColorAs.Value(mongoServer)} using port {ColorAs.Value(mongoPort.ToString())}");
+                Out.Error($"No eventstores found in {ColorAs.Value(mongoServer)} using port {ColorAs.Value(mongoPort.ToString())}");
 
             return eventStoreDatabaseNames;
         }
@@ -500,7 +508,7 @@ namespace Elog
             var newName = configName;
             do
             {
-                newName = AnsiConsole.Ask<string>("Enter a new configuration name", $"{newName}_new");
+                newName = AnsiConsole.Ask("Enter a new configuration name", $"{newName}_new");
                 if (newName.Equals(configName, StringComparison.InvariantCultureIgnoreCase) || currentConfig.Any(c => c.Name.Equals(newName, StringComparison.InvariantCultureIgnoreCase)))
                     AnsiConsole.MarkupLine($"[red]Nope, '{newName}' is taken. Try again![/]");
 
@@ -542,7 +550,7 @@ namespace Elog
             if (serialized.Length > 0)
             {
                 File.WriteAllText(_configurationFile, serialized);
-                Ansi.Success($"Configuration saved to: {ColorAs.Value(_configurationFile)}");
+                Out.Success($"Configuration saved to: {ColorAs.Value(_configurationFile)}");
             }
         }
     }

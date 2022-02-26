@@ -20,7 +20,7 @@ namespace OutputWriting
         public static string Success(string message) => $"{MessageColors.SuccessColor}{message}[/]";
     }
 
-    public static class Ansi
+    public static class Out
     {
         public static void Info(string message)
             => AnsiConsole.MarkupLine(ColorAs.Info(message));

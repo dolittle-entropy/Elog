@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading;
 using OutputWriting;
 using Spectre.Console;
 using TypeMapping;
@@ -91,13 +92,13 @@ namespace AssemblyReading
 
             if (typeMap.Aggregate is { })
             {
-                Ansi.Info($"Aggregate '{ColorAs.Value(typeMap.Aggregate.Name)}', {ColorAs.Value(typeMap.Aggregate.Id.ToString())}.{Environment.NewLine}EventTypes found in binaries folder: {ColorAs.Value(typeMap.Events.Count.ToString())}");
+                Out.Info($"Aggregate '{ColorAs.Value(typeMap.Aggregate.Name)}', {ColorAs.Value(typeMap.Aggregate.Id.ToString())}.{Environment.NewLine}EventTypes found in binaries folder: {ColorAs.Value(typeMap.Events.Count.ToString())}");
             }
             return typeMap;
         }
 
         /// <summary>
-        /// Perform a discovery on all aggregates, events, and projections        
+        /// Perform a discovery on all aggregates, events, and projections
         /// </summary>
         public void DiscoverDolittleTypes()
         {
@@ -107,7 +108,7 @@ namespace AssemblyReading
             AnsiConsole.Progress()
                 .AutoRefresh(true) // Turn off auto refresh
                 .AutoClear(true)   // Do not remove the task list when done
-                .HideCompleted(true)   // Hide tasks as they are completed                
+                .HideCompleted(true)   // Hide tasks as they are completed
                 .Columns(new ProgressColumn[]
                 {
                     new TaskDescriptionColumn(),
@@ -147,7 +148,7 @@ namespace AssemblyReading
                             continue;
                         }
                     }
-                    typesTask.Value = 100.0;                    
+                    typesTask.Value = 100.0;
                 }
             });
         }
