@@ -11,6 +11,7 @@ public static class Program
     public static int Main(string[] args)
     {
         var app = new CommandApp<Splash>();
+        using var _ = new TimedAction("Elog");
 
         app.Configure(config =>
         {
@@ -33,17 +34,7 @@ public static class Program
             config.Settings.ApplicationName = "Elog";
 
         });
-
-        var stopwatch = Stopwatch.StartNew();
-
-        var result = app.Run(args);
-        if (result == 0)
-            Out.Info($"Program finished in {stopwatch.ElapsedMilliseconds:### ###.0}ms");
-        else
-            Out.Error($"Program finished with errors in {stopwatch.ElapsedMilliseconds:### ###.0}ms");
-
-        AnsiConsole.Reset();
-        return result;
+        return app.Run(args);
     }
 }
 

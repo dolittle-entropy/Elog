@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
+using Common;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
@@ -19,9 +20,9 @@ namespace MongoDbReading
         readonly MongoClient _mongoClient;
         readonly IMongoCollection<BsonDocument> _collection;
 
-        public EventStoreReader(string server, int port, string database)
-        {
-            var mongoServerAddress = new MongoServerAddress(server, port);
+        public EventStoreReader(MongoConfig config)
+{
+            var mongoServerAddress = new MongoServerAddress(config.MongoServer, config.Port);
             var settings = new MongoClientSettings
             {
                 Server = mongoServerAddress,
@@ -32,7 +33,7 @@ namespace MongoDbReading
             try
             {
                 _mongoClient = new MongoClient(settings);
-                var mongoDdatabase = _mongoClient.GetDatabase(database);
+                var mongoDdatabase = _mongoClient.GetDatabase(config.MongoDB);
                 _collection = mongoDdatabase.GetCollection<BsonDocument>("event-log");
             }
             catch (Exception ex)

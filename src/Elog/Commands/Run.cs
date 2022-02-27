@@ -13,18 +13,6 @@ using Spectre.Console.Cli;
 
 namespace Elog.Commands
 {
-    public class RunSettings : CommandSettings
-    {
-        [CommandArgument(0, "[Aggregate name]")]
-        public string AggregateName { get; set; } = string.Empty;
-
-        [CommandArgument(1, "[Aggregate Id]")]
-        public string Id { get; set; } = Guid.Empty.ToString();
-
-        [CommandArgument(2, "[Event number]")]
-        public int EventNumber { get; set; } = -1;
-
-    }
 
     public class Run : Command<RunSettings>
     {
@@ -73,16 +61,20 @@ namespace Elog.Commands
         {
             if (aggregates?.Any() ?? false)
             {
+
                 var table = new Table()
                     .AddColumns("Aggregate name", "Mapped to Id");
 
-                foreach (var entry in aggregates)
+                const int take = 20;
+                int skip = 0;
+                foreach (var entry in aggregates.Take(take).Skip(skip))
                 {
                     table.AddRow(entry.Name, entry.Id.ToString());
                 }
                 Out.Info($"Found {aggregates.Count()} Aggregate Types:");
                 AnsiConsole.Write(table);
-                Out.Info($"Add '{ColorAs.Value("-a <aggregatename>")}' to see a list of individual aggregates{Environment.NewLine}");
+
+                Out.Info($"Add the '{ColorAs.Value("<aggregatename>")}' to drill down into a list of individual aggregates{Environment.NewLine}");
             }
             else
             {
@@ -92,10 +84,7 @@ namespace Elog.Commands
 
         async Task ListEventsForAggregate(TypeMapping.DolittleTypeMap map)
         {
-            var reader = new EventStoreReader(
-                _config.MongoConfig.MongoServer,
-                _config.MongoConfig.Port,
-                _config.MongoConfig.MongoDB);
+            var reader = new EventStoreReader(_config.MongoConfig);
 
             var uniqueEventSources = await reader
                 .GetUniqueEventSources(map)
@@ -117,7 +106,7 @@ namespace Elog.Commands
                     );
                 }
                 AnsiConsole.Write(table);
-                Out.Info($"{ColorAs.Value(uniqueEventSources.Count().ToString())} unique Identities found for {ColorAs.Value(map.Aggregate.Name)}. {Environment.NewLine}Add '-id <id>' to see their event log.\n");
+                Out.Info($"{ColorAs.Value(uniqueEventSources.Count().ToString())} unique Identities found for {ColorAs.Value(map.Aggregate.Name)}. {Environment.NewLine}Add the {ColorAs.Value("<identity>")}' to see its event log.\n");
             }
             else
             {
@@ -128,10 +117,7 @@ namespace Elog.Commands
 
         async Task ListUniqueIdentifiers(TypeMapping.DolittleTypeMap map, [NotNull] RunSettings settings)
         {
-            var reader = new EventStoreReader(
-                _config.MongoConfig.MongoServer,
-                _config.MongoConfig.Port,
-                _config.MongoConfig.MongoDB);
+            var reader = new EventStoreReader(_config.MongoConfig);
 
             string guidId;
 
@@ -172,7 +158,7 @@ namespace Elog.Commands
                 }
                 AnsiConsole.Write(table);
 
-                Out.Info($"Add '-n <#>' to see the payload of the event{Environment.NewLine}");
+                Out.Info($"Add the {ColorAs.Value("<event number>")} to see the payload of the individual event{Environment.NewLine}");
             }
             else
             {

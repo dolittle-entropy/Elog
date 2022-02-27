@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using OutputWriting;
@@ -7,10 +8,6 @@ using Spectre.Console.Cli;
 
 namespace Elog.Commands
 {
-    public class SplashSettings : CommandSettings
-    {
-
-    }
 
     public class Splash : Command<SplashSettings>
     {
@@ -18,8 +15,9 @@ namespace Elog.Commands
         {
             AnsiConsole.Clear();
             AnsiConsole.Write(new FigletText("ELOG").LeftAligned().Color(Color.Orange1));
-
+            Out.Info($"A handy tool for working with Dolittle powered applications.{Environment.NewLine}");
             ShowHelp(context);
+            Out.Info($"[italic]You can always exit by using control or command + c[/]");
             ShowVersion(context);
 
             AnsiConsole.Reset();

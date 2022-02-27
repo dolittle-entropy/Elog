@@ -17,22 +17,6 @@ using sp = Spectre.Console.Cli;
 namespace Elog.Commands
 {
 
-    public class ConfigureSettings : CommandSettings
-    {
-
-        [CommandOption("-c|--create")]
-        public bool Create { get; set; }
-
-        [CommandOption("-d|--delete")]
-        public bool Delete { get; set; }
-
-        [CommandOption("-a|--active")]
-        public bool ActiveConfiguration { get; set; }
-
-        [CommandOption("-e|--edit")]
-        public bool Update { get; set; }
-    }
-
     public class Configure : sp.Command<ConfigureSettings>
     {
         const string ConfigurationFileName = "elog-config.json";
@@ -314,11 +298,7 @@ namespace Elog.Commands
                 Out.Error($"The folder '{ColorAs.Value(config.BinariesPath)}' does not contain any files mathcing the pattern '{ColorAs.Value(KeyDolittleSDKFile)}'");
                 return false;
             }
-            var eventStoreReader = new EventStoreReader(
-                config.MongoConfig.MongoServer,
-                config.MongoConfig.Port,
-                config.MongoConfig.MongoDB);
-
+            var eventStoreReader = new EventStoreReader(config.MongoConfig);
             if (!eventStoreReader.ConnectionWorks())
             {
                 Out.Error($"Unable to connect to mongo using '{config.MongoConfig.MongoServer}.{config.MongoConfig.MongoDB}:{config.MongoConfig.Port}'");
@@ -519,11 +499,13 @@ namespace Elog.Commands
 
         private bool MongoConfigurationIsValid(string mongoServer, string mongoDatabase, int mongoPort)
         {
-            var eventStoreReader = new EventStoreReader(
-                mongoServer,
-                mongoPort,
-                mongoDatabase);
-
+            var tempConfig = new MongoConfig
+            {
+                MongoServer = mongoServer,
+                MongoDB = mongoDatabase,
+                Port = mongoPort
+            };
+            var eventStoreReader = new EventStoreReader(tempConfig);
             return eventStoreReader.ConnectionWorks();
         }
 

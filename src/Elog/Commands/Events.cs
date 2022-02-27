@@ -12,12 +12,6 @@ using TypeMapping;
 namespace Elog.Commands
 {
 
-    public class EventSettings : CommandSettings
-    {
-        [CommandArgument(0, "[EventType name]")]
-        public string Filter { get; set; }
-    }
-
     public class Events : Command<EventSettings>
     {
         readonly ElogConfiguration? _config;
@@ -29,7 +23,7 @@ namespace Elog.Commands
             AnsiConsole.Clear();
             _config = ElogConfigurationFactory.Load()?.Display()
                 ?? throw new UnableToLoadElogConfiguration();
-            _eventStoreReader = new EventStoreReader(_config.MongoConfig.MongoServer, _config.MongoConfig.Port, _config.MongoConfig.MongoDB);
+            _eventStoreReader = new EventStoreReader(_config.MongoConfig);
             _assemblyReader = new AssemblyReader(_config.BinariesPath);
         }
 
