@@ -75,15 +75,22 @@ namespace Elog.Commands
 
             AnsiConsole.Write(headerTable);
 
-            var table = new Table()
-                .AddColumns("By Aggregate", "Aggregate Id", "Invocation Count")
-                .RoundedBorder();
-
-            foreach (var info in eventUsage.AggregateUsages.Values)
+            if (eventUsage.InvocationCount > 0)
             {
-                table.AddRow(info.Aggregate.Name, info.Aggregate.Id.ToString(), info.InvocationCount.ToString());
+                var table = new Table()
+                    .AddColumn("Invoked By Aggregate")
+                    .AddColumn("Aggregate Id")
+                    .AddColumn("Invocations", config => config.RightAligned())
+                    .RoundedBorder();
+
+                foreach (var info in eventUsage.AggregateUsages.Values)
+                {
+                    table.AddRow(info.Aggregate.Name, info.Aggregate.Id.ToString(), info.InvocationCount.ToString("### ### ###"));
+                }
+                AnsiConsole.Write(table);
             }
-            AnsiConsole.Write(table);
+            else
+                Out.Warning($"No invocations of {ColorAs.Value(eventUsage.DolittleEvent.Name)} were found in the event log");
         }
 
         private void DisplayEventList(List<DolittleEvent> dolittleEvents)
@@ -103,6 +110,8 @@ namespace Elog.Commands
             var choices = new List<string>();
             choices.Add(cancelChoice);
             choices.AddRange(dolittleEvents.Select(x => x.Name));
+
+            Out.Info($"Select event to inspect or {cancelChoice} to finish:");
 
             var response = AnsiConsole.Prompt(new SelectionPrompt<string>()
                 .PageSize(3)
