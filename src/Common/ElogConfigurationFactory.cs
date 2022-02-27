@@ -25,7 +25,7 @@ namespace Common
             {
                 Out.Error($"No configurations exist. Run '{ColorAs.Value("Elog configure")}' to create your first configuration");
                 return default;
-            }            
+            }
             return configuration;
         }
 

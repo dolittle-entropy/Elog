@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace MongoDbReading
+﻿namespace MongoDbReading
 {
     public class EventSource
     {

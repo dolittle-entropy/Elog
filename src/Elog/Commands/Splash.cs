@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using OutputWriting;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -38,7 +33,7 @@ namespace Elog.Commands
                 .AddColumns("Command", "Alias", "Purpose")
                 .Border(TableBorder.Simple);
 
-            table.AddRow("configure",   "c", "Manage Elog configurations ");
+            table.AddRow("configure", "c", "Manage Elog configurations ");
             table.AddRow("aggregates", "a", "Drill down into aggregates using the active configuration");
             table.AddRow("events", "e", "Drill down into EventTypes using the active configuration");
 

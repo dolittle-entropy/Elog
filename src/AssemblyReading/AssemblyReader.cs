@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Threading;
 using OutputWriting;
 using Spectre.Console;
 using TypeMapping;
@@ -131,7 +130,7 @@ namespace AssemblyReading
                     var typesTask = ctx.AddTask($"{fileInfo.Name}:");
                     foreach (var type in types)
                     {
-                        typesTask.Increment(typeStep);                        
+                        typesTask.Increment(typeStep);
                         try
                         {
                             if (MapTypeToAggregateRoot(type))

@@ -98,7 +98,7 @@ namespace MongoDbReading
                     new PercentageColumn(),
                     new SpinnerColumn(Spinner.Known.Dots5)
                 })
-                .StartAsync(async ctx => 
+                .StartAsync(async ctx =>
                 {
                     var task1 = ctx.AddTask("Reading through the eventstore...");
                     var task2 = ctx.AddTask("Counting and sorting Events......");
@@ -110,17 +110,17 @@ namespace MongoDbReading
 
                     for (int i = 0; i < allDocuments.Count; i++)
                     {
-                        task2.Increment(stepSize);                        
+                        task2.Increment(stepSize);
 
                         // Count it
                         result.InvocationCount += 1;
 
                         // Set first time found
                         if (result.FirstOffset == 0)
-                            result.FirstOffset = (long) allDocuments[i]["_id"].AsDecimal128;
+                            result.FirstOffset = (long)allDocuments[i]["_id"].AsDecimal128;
 
                         // Set the last seen offset
-                        result.LastOffset = (long) allDocuments[i]["_id"].AsDecimal128;
+                        result.LastOffset = (long)allDocuments[i]["_id"].AsDecimal128;
 
                         var aggregateId = allDocuments[i]["Aggregate"]["TypeId"].AsGuid.ToString();
 
@@ -134,7 +134,7 @@ namespace MongoDbReading
                         }
                         result.AggregateUsages[aggregateId].InvocationCount += 1;
                     }
-                    
+
                 });
 
             return result;

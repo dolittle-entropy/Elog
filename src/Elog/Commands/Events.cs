@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using AssemblyReading;
 using Common;
-using McMaster.Extensions.CommandLineUtils;
 using MongoDbReading;
 using OutputWriting;
 using Spectre.Console;
@@ -67,11 +64,11 @@ namespace Elog.Commands
                 .Border(TableBorder.Simple)
                 .AddColumns("Sample", "Value");
 
-            headerTable.AddRow("Event Type",            ColorAs.Value(eventUsage.DolittleEvent.Name));
-            headerTable.AddRow("Event Type Id ",        ColorAs.Value(eventUsage.DolittleEvent.Id.ToString()));
+            headerTable.AddRow("Event Type", ColorAs.Value(eventUsage.DolittleEvent.Name));
+            headerTable.AddRow("Event Type Id ", ColorAs.Value(eventUsage.DolittleEvent.Id.ToString()));
             headerTable.AddRow("Number of invocations", ColorAs.Value(eventUsage.InvocationCount.ToString()));
-            headerTable.AddRow("First offset",          ColorAs.Value(eventUsage.FirstOffset.ToString()));
-            headerTable.AddRow("Last offset",           ColorAs.Value(eventUsage.LastOffset.ToString()));
+            headerTable.AddRow("First offset", ColorAs.Value(eventUsage.FirstOffset.ToString()));
+            headerTable.AddRow("Last offset", ColorAs.Value(eventUsage.LastOffset.ToString()));
 
             AnsiConsole.Write(headerTable);
 

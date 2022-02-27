@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using AssemblyReading;
 using Common;
-using McMaster.Extensions.CommandLineUtils;
 using MongoDbReading;
 using Newtonsoft.Json;
 using OutputWriting;
@@ -14,7 +12,7 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 
 namespace Elog.Commands
-{    
+{
     public class RunSettings : CommandSettings
     {
         [CommandArgument(0, "[Aggregate name]")]

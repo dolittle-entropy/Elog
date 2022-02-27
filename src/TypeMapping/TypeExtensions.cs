@@ -1,8 +1,8 @@
-﻿using Dolittle.SDK.Aggregates;
+﻿using System;
+using System.Reflection;
+using Dolittle.SDK.Aggregates;
 using Dolittle.SDK.Events;
 using Dolittle.SDK.Projections;
-using System;
-using System.Reflection;
 
 namespace TypeMapping
 {
@@ -20,14 +20,14 @@ namespace TypeMapping
                 return null;
             }
 
-            var attribute = (AggregateRootAttribute) type.GetCustomAttribute<AggregateRootAttribute>();
+            var attribute = type.GetCustomAttribute<AggregateRootAttribute>();
 
             if (attribute is AggregateRootAttribute attr)
             {
                 try
                 {
                     return new DolittleAggregate
-                    {                    
+                    {
                         Id = attr.Type.Id,
                         Name = type.Name
                     };
