@@ -5,6 +5,12 @@ namespace OutputWriting
 
     public static class Out
     {
+        public const string DetailedTimeFormat = "dddd dd.MMM.yyyy HH:mm:ss.ffff";
+        public const string BigNumberFormat = "### ### ###";
+
+        public static string BigNumber(long number)
+            => ColorAs.Value(number.ToString(BigNumberFormat).Trim());
+
         public static void Info(string message)
             => AnsiConsole.MarkupLine(ColorAs.Info(message));
 

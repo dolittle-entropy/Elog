@@ -1,7 +1,5 @@
-﻿using System.Diagnostics;
-using Elog.Commands;
+﻿using Elog.Commands;
 using OutputWriting;
-using Spectre.Console;
 using Spectre.Console.Cli;
 
 namespace Elog;

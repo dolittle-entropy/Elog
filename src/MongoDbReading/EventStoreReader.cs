@@ -21,7 +21,7 @@ namespace MongoDbReading
         readonly IMongoCollection<BsonDocument> _collection;
 
         public EventStoreReader(MongoConfig config)
-{
+        {
             var mongoServerAddress = new MongoServerAddress(config.MongoServer, config.Port);
             var settings = new MongoClientSettings
             {
@@ -62,6 +62,7 @@ namespace MongoDbReading
                 if (existing is { })
                 {
                     existing.EventCount++;
+                    existing.LastOccurred = document["Metadata"]["Occurred"].AsDateTime;
                 }
                 else
                 {
@@ -69,8 +70,10 @@ namespace MongoDbReading
                     {
                         Aggregate = map.Aggregate.Name,
                         Id = eventSourceId.ToString(),
+                        LastOccurred = document["Metadata"]["Occurred"].ToUniversalTime(),
+                        LastOffset = (long)document["_id"].AsDecimal128,
                         EventCount = 1
-                    });
+                    }); ;
                 }
             }
             return completeList;

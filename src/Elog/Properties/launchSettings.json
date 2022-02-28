@@ -1,8 +1,7 @@
 {
   "profiles": {
     "Elog": {
-      "commandName": "Project",
-      "commandLineArgs": "e WorkOrderLineAddedFromM3"
+      "commandName": "Project"
     }
   }
 }

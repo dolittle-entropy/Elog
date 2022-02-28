@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using OutputWriting;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using TypeMapping;
 
 namespace Elog.Commands
 {
@@ -17,6 +18,7 @@ namespace Elog.Commands
     public class Run : Command<RunSettings>
     {
         readonly ElogConfiguration? _config;
+        AssemblyReader _assemblyReader;
 
         public Run()
         {
@@ -29,12 +31,12 @@ namespace Elog.Commands
 
         public override int Execute([NotNull] CommandContext context, [NotNull] RunSettings settings)
         {
-            var assemblyReader = new AssemblyReader(_config.BinariesPath);
-            assemblyReader.DiscoverDolittleTypes();
+            _assemblyReader = new AssemblyReader(_config.BinariesPath);
+            _assemblyReader.DiscoverDolittleTypes();
 
             if (settings.AggregateName.Length > 0) // We are looking for a specific Aggregate
             {
-                var map = assemblyReader.GenerateMapForAggregate(settings.AggregateName);
+                var map = _assemblyReader.GenerateMapForAggregate(settings.AggregateName);
                 if (map is null)
                 {
                     Out.Error($"Unable to map aggregate '{ColorAs.Value(settings.AggregateName)}'. Operation cancelled");
@@ -47,34 +49,32 @@ namespace Elog.Commands
                 }
                 else // We have an event source ID, so we want to display the event log
                 {
-                    ListEventsForAggregate(map).Wait();
+                    ListEventsForAggregate(map, settings).Wait();
                 }
             }
             else // We didn't supply an aggregate name, so we just list all of them
             {
-                DisplayAggregateList(assemblyReader.DolittleAggregates);
+                DisplayAggregateList(_assemblyReader.DolittleAggregates, settings);
             }
             return 0;
         }
 
-        static void DisplayAggregateList(IEnumerable<TypeMapping.DolittleAggregate> aggregates)
+        void DisplayAggregateList(IEnumerable<TypeMapping.DolittleAggregate> aggregates, [NotNull] RunSettings settings)
         {
             if (aggregates?.Any() ?? false)
             {
-
-                var table = new Table()
-                    .AddColumns("Aggregate name", "Mapped to Id");
-
-                const int take = 20;
-                int skip = 0;
-                foreach (var entry in aggregates.Take(take).Skip(skip))
-                {
-                    table.AddRow(entry.Name, entry.Id.ToString());
-                }
-                Out.Info($"Found {aggregates.Count()} Aggregate Types:");
-                AnsiConsole.Write(table);
-
-                Out.Info($"Add the '{ColorAs.Value("<aggregatename>")}' to drill down into a list of individual aggregates{Environment.NewLine}");
+                new LiveDataTable<DolittleAggregate>()
+                    .WithHeader($"Found {aggregates.Count()} Aggregate roots:")
+                    .WithDataSource(aggregates)
+                    .WithColumns("Aggregate root", "Aggregate root identifier")
+                    .WithDataPicker(a => new List<string> { a.Name, a.Id.ToString(), })
+                    .WithEnterInstruction("drill into {0}", p => p.Name)
+                    .WithSelectionAction(selectedAggregate =>
+                    {
+                        settings.AggregateName = selectedAggregate.Name;
+                        var map = _assemblyReader.GenerateMapForAggregate(settings.AggregateName);
+                        ListEventsForAggregate(map, settings).Wait();
+                    }).Start();
             }
             else
             {
@@ -82,7 +82,7 @@ namespace Elog.Commands
             }
         }
 
-        async Task ListEventsForAggregate(TypeMapping.DolittleTypeMap map)
+        async Task ListEventsForAggregate(TypeMapping.DolittleTypeMap map, [NotNull] RunSettings settings)
         {
             var reader = new EventStoreReader(_config.MongoConfig);
 
@@ -90,29 +90,44 @@ namespace Elog.Commands
                 .GetUniqueEventSources(map)
                 .ConfigureAwait(false);
 
-            if (uniqueEventSources?.Any() ?? false)
-            {
-                var table = new Table()
-                    .AddColumns("Aggregate", "Id", "Events");
-
-                table.Columns[2].RightAligned();
-
-                foreach (var uniqueEventSource in uniqueEventSources)
-                {
-                    table.AddRow(
-                        uniqueEventSource.Aggregate,
-                        uniqueEventSource.Id.ToString(),
-                        uniqueEventSource.EventCount.ToString()
-                    );
-                }
-                AnsiConsole.Write(table);
-                Out.Info($"{ColorAs.Value(uniqueEventSources.Count().ToString())} unique Identities found for {ColorAs.Value(map.Aggregate.Name)}. {Environment.NewLine}Add the {ColorAs.Value("<identity>")}' to see its event log.\n");
-            }
-            else
+            if (!uniqueEventSources?.Any() ?? true)
             {
                 Out.Warning($"No aggregates were found for type '{ColorAs.Value(map.Aggregate.Name)}'");
+                return;
             }
+            Out.Info($"{ColorAs.Value(uniqueEventSources.Count().ToString())} unique Identities found for {ColorAs.Value(map.Aggregate.Name)}. {Environment.NewLine}Add the {ColorAs.Value("<identity>")}' to see its event log.\n");
 
+            var dataTable = new Table()
+                .Border(TableBorder.Rounded);
+
+            var liveTable = new LiveDataTable<EventSource>()
+                .WithHeader("Use right/left to flip pages. Commands: [[ (i)nspect ]]")
+                .WithDataSource(uniqueEventSources)
+                .WithColumns("Aggregate root", "Aggregate Id", "Event count", "Last offset", "Last updated")
+                .WithEnterInstruction("Inspect Aggregate with ID: {0}", p => p.Id)
+                .WithDataPicker(item =>
+                {
+                    return new List<string>
+                    {
+                        item.Aggregate,
+                        item.Id,
+                        item.EventCount.ToString(),
+                        item.LastOffset.ToString(),
+                        item.LastOccurred.ToString(Out.DetailedTimeFormat)
+                    };
+                })
+                .WithSelectionAction(source =>
+                {
+                    var selectedMap = _assemblyReader.GenerateMapForAggregate(source.Aggregate);
+                    if (selectedMap != null)
+                    {
+                        settings.AggregateName = selectedMap.Aggregate.Name;
+                        settings.Id = source.Id;
+                        ListUniqueIdentifiers(selectedMap, settings).Wait();
+                    }
+                });
+
+            liveTable.Start();
         }
 
         async Task ListUniqueIdentifiers(TypeMapping.DolittleTypeMap map, [NotNull] RunSettings settings)
@@ -143,36 +158,28 @@ namespace Elog.Commands
 
             var eventLog = (await reader.GetEventLog(map, guidId).ConfigureAwait(false)).ToList();
 
-            if (settings.EventNumber <= -1)
-            {
-                Out.Info($"{Environment.NewLine}Event history for '{ColorAs.Value(map.Aggregate.Name)}' Id: {guidId}");
+            var liveTable = new LiveDataTable<EventEntry>()
+                .WithHeader($"{Environment.NewLine}Event history for '{ColorAs.Value(map.Aggregate.Name)}' Id: {guidId}")
+                .WithEnterInstruction("see the payload of the selected '{0}' event", e => e.Event)
+                .WithDataSource(eventLog)
+                .WithColumns("Aggregate", "Event", "Time")
+                .WithDataPicker(e => new List<string>
+                    {
+                        e.Aggregate,
+                        e.Event,
+                        e.Time.ToString(Out.DetailedTimeFormat)
+                    })
+                .WithSelectionAction(e => DisplayEventPayload(map, e, settings));
 
-                var table = new Table()
-                    .AddColumns("No.", "Aggregate", "Event", "Time");
-                var counter = 0;
-                foreach (var entry in eventLog)
-                {
-                    var eventName = entry.Event + (entry.IsPublic ? "*" : "");
+            liveTable.Start();
+        }
 
-                    table.AddRow(counter++.ToString(), entry.Aggregate, eventName, entry.Time.ToString("dddd dd.MMMyyyy HH:mm:ss.ffff"));
-                }
-                AnsiConsole.Write(table);
-
-                Out.Info($"Add the {ColorAs.Value("<event number>")} to see the payload of the individual event{Environment.NewLine}");
-            }
-            else
-            {
-                if (settings.EventNumber >= eventLog.Count)
-                {
-                    Out.Error($"The Event number values for this Event Source range from 0 t0 {eventLog.Count - 1} only.{Environment.NewLine}");
-                    return;
-                }
-                var rightEvent = eventLog.ToList()[settings.EventNumber];
-                var json = JsonConvert.DeserializeObject(rightEvent.PayLoad);
-                Out.Info($"Displaying event number {ColorAs.Value(settings.EventNumber.ToString())} from aggregate {ColorAs.Value(map.Aggregate.Name)} with id {ColorAs.Value(settings.Id)}:");
-                Out.Info($"This event is of type {ColorAs.Value(rightEvent.Event)} and was applied on {ColorAs.Value(rightEvent.Time.ToString("dddd dd.MMMyyyy HH:mm:ss.ffff"))}");
-                Out.Content("JSON Content", json?.ToString() ?? ColorAs.Error("--NO CONTENT--"));
-            }
+        void DisplayEventPayload(DolittleTypeMap map, EventEntry eventEntry, [NotNull] RunSettings settings)
+        {
+            var json = JsonConvert.DeserializeObject(eventEntry.PayLoad);
+            Out.Info($"Displaying {eventEntry.Event} from aggregate {ColorAs.Value(map.Aggregate.Name)} with id {ColorAs.Value(settings.Id)}:");
+            Out.Info($"This event is of type {ColorAs.Value(eventEntry.Event)} and was applied on {ColorAs.Value(eventEntry.Time.ToString("dddd dd.MMMyyyy HH:mm:ss.ffff"))}");
+            Out.Content("JSON Content", json?.ToString() ?? ColorAs.Error("--NO CONTENT--"));
         }
     }
 }

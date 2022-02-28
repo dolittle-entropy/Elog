@@ -52,8 +52,7 @@ namespace Elog.Commands
         }
 
         private void DisplayEventUsage(DolittleEventUsage? eventUsage)
-        {
-
+        {            
             var headerTable = new Table()
                 .Border(TableBorder.Simple)
                 .AddColumns("Sample", "Value");
@@ -66,19 +65,21 @@ namespace Elog.Commands
 
             AnsiConsole.Write(headerTable);
 
-            if (eventUsage.InvocationCount > 0)
+            if(eventUsage.InvocationCount > 0)
             {
-                var table = new Table()
-                    .AddColumn("Invoked By Aggregate")
-                    .AddColumn("Aggregate Id")
-                    .AddColumn("Invocations", config => config.RightAligned())
-                    .RoundedBorder();
 
-                foreach (var info in eventUsage.AggregateUsages.Values)
+            new LiveDataTable<DolittleAggregateUsage>()
+                .WithHeader($"Found {eventUsage.AggregateUsages.Count} event types;")
+                .WithDataSource(eventUsage.AggregateUsages.Values)
+                .WithColumns("Invoked by Aggregate", "Aggregate root Id", "Invocations")
+                .WithDataPicker(eu => new()
                 {
-                    table.AddRow(info.Aggregate.Name, info.Aggregate.Id.ToString(), info.InvocationCount.ToString("### ### ###"));
-                }
-                AnsiConsole.Write(table);
+                    eu.Aggregate.Name,
+                    eu.Aggregate.Id.ToString(),
+                    Out.BigNumber(eu.InvocationCount)
+                })
+                .WithEnterInstruction("drill into {0}", p => p.Aggregate.Name)                
+                .Start();
             }
             else
                 Out.Warning($"No invocations of {ColorAs.Value(eventUsage.DolittleEvent.Name)} were found in the event log");

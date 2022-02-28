@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
@@ -11,13 +12,30 @@ namespace Elog.Commands
 
     public class Splash : Command<SplashSettings>
     {
+        class HackyCommand
+        {
+            public string Name { get; set; }
+            public string Alias { get; set; }
+            public string Description { get; set; }
+
+            public HackyCommand()
+            {
+            }
+
+            public HackyCommand(string name, string alias, string description)
+            {
+                Name = name;
+                Alias = alias;
+                Description = description;
+            }
+        }
+
         public override int Execute([NotNull] CommandContext context, [NotNull] SplashSettings settings)
         {
             AnsiConsole.Clear();
             AnsiConsole.Write(new FigletText("ELOG").LeftAligned().Color(Color.Orange1));
             Out.Info($"A handy tool for working with Dolittle powered applications.{Environment.NewLine}");
-            ShowHelp(context);
-            Out.Info($"[italic]You can always exit by using control or command + c[/]");
+            ShowHelp(context);            
             ShowVersion(context);
 
             AnsiConsole.Reset();
@@ -26,16 +44,57 @@ namespace Elog.Commands
 
         private void ShowHelp(CommandContext context)
         {
-            Out.Info($"[bold]COMMANDS:[/]");
-            var table = new Table()
-                .AddColumns("Command", "Alias", "Purpose")
-                .Border(TableBorder.Simple);
+            var hackyCommands = new List<HackyCommand>
+            {
+                new HackyCommand("Configure", "c", "Manage your Elog configuration"),
+                new HackyCommand("Aggregates", "a", "Drill down into the Aggregates"),
+                new HackyCommand("Events", "e", "Drill into event types and their usages"),
+                new HackyCommand("Cancel", "", "Exit this selection")
+            };
 
-            table.AddRow("configure", "c", "Manage Elog configurations ");
-            table.AddRow("aggregates", "a", "Drill down into aggregates using the active configuration");
-            table.AddRow("events", "e", "Drill down into EventTypes using the active configuration");
+            new LiveDataTable<HackyCommand>()
+                .WithoutBorders()
+                .WithHeader("[bold]COMMANDS:[/]")
+                .WithColumns("Command", "Alias", "Description")
+                .WithDataSource(hackyCommands)
+                .WithDataPicker(p => new(){ p.Name, p.Alias, p.Description })
+                .WithEnterInstruction("invoke '{0}'", p => p.Name)
+                .WithSelectionAction(selectedOption =>
+                {
+                    if (selectedOption.Name != "Cancel")
+                        SelectCommand(context, selectedOption);
+                })
+                .Start();            
+        }
 
-            AnsiConsole.Write(table);
+        private void SelectCommand(CommandContext context, [NotNull] HackyCommand command)
+        {
+            switch (command.Name)
+            {
+                case "Configure":
+                    {
+                        var commandSettings = new ConfigureSettings();
+                        var configCommand = new Configure();
+                        configCommand.Execute(context, commandSettings);
+                        break;
+                    }
+
+                case "Aggregates":
+                    {
+                        var aggregateSettings = new RunSettings();
+                        var aggregateCommand = new Run();
+                        aggregateCommand.Execute(context, aggregateSettings);
+                        break;
+                    }
+
+                case "Events":
+                    {
+                        var eventSettings = new EventSettings();
+                        var eventCommand = new Events();
+                        eventCommand.Execute(context, eventSettings);
+                        break;
+                    }
+            };
         }
 
         private static int ShowVersion(CommandContext context)
