@@ -225,44 +225,23 @@ namespace Elog.Commands
 
             AnsiConsole.MarkupLine($"Configuration loaded from [yellow]{_configurationFile}[/]");
 
-            var ansiTable = new Table()
-                .Border(TableBorder.Square)
-                .AddColumn("Configuration name")
-                .AddColumn("Solution(s)")
-                .AddColumn("Mongo Server")
-                .AddColumn("EventStore DB")
-                .AddColumn("Mongo Port")
-                .AddColumn("Active?");
-
-            ansiTable.Columns[4].RightAligned();
-            ansiTable.Columns[5].Centered();
-
-            foreach (var config in savedConfigs)
-            {
-                var solutionName = FindSolutionNameInBinariesPath(config.BinariesPath);
-                if (solutionName.Contains("-Bad Path-"))
-                {
-                    ansiTable.AddRow(
-                        ColorAs.Error(config.Name),
-                        ColorAs.Error(solutionName),
-                        ColorAs.Error(config.MongoConfig.MongoServer),
-                        ColorAs.Error(config.MongoConfig.MongoDB),
-                        ColorAs.Error(config.MongoConfig.Port.ToString()),
-                        ColorAs.Error(""));
-                }
-                else
-                {
-                    ansiTable.AddRow(
-                        config.IsDefault ? ColorAs.Success(config.Name) : config.Name,
-                        config.IsDefault ? ColorAs.Success(solutionName) : solutionName,
-                        config.IsDefault ? ColorAs.Success(config.MongoConfig.MongoServer) : config.MongoConfig.MongoServer,
-                        config.IsDefault ? ColorAs.Success(config.MongoConfig.MongoDB) : config.MongoConfig.MongoDB,
-                        config.IsDefault ? ColorAs.Success(config.MongoConfig.Port.ToString()) : config.MongoConfig.Port.ToString(),
-                        config.IsDefault ? ColorAs.Success("yes") : "");
-                }
-            }
-            AnsiConsole.Write(ansiTable);
-            AnsiConsole.MarkupLine($"[green]{savedConfigs.Count}[/] configurations found{Environment.NewLine}");
+            var headerValue = ColorAs.Value($"{savedConfigs.Count} Configurations");
+            new LiveDataTable<ElogConfiguration>()
+                .WithHeader($"Loaded {headerValue}:")
+                .WithDataSource(savedConfigs)
+                .WithColumns("Configuration", "Solution(s)", "Mongo Server", "EventStore Db", "Mongo Port", "Active")
+                .WithDataPicker(p => new List<string>
+                { 
+                    
+                    p.Name,
+                    FindSolutionNameInBinariesPath(p.BinariesPath),
+                    p.MongoConfig.MongoServer,
+                    p.MongoConfig.MongoDB,
+                    p.MongoConfig.Port.ToString(),
+                    p.IsDefault ? "Yes" : ""
+                })
+                .WithSelectionAction(a => Console.WriteLine("Todo!"))
+                .Start();
         }
 
         static string FindSolutionNameInBinariesPath(string binariesPath)

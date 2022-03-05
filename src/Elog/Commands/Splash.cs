@@ -49,7 +49,7 @@ namespace Elog.Commands
                 new HackyCommand("Configure", "c", "Manage your Elog configuration"),
                 new HackyCommand("Aggregates", "a", "Drill down into the Aggregates"),
                 new HackyCommand("Events", "e", "Drill into event types and their usages"),
-                new HackyCommand("Cancel", "", "Exit this selection")
+                new HackyCommand("Cancel", "", "Exit this selection. [[ESC]] also cancels table selections")
             };
 
             new LiveDataTable<HackyCommand>()

@@ -102,10 +102,6 @@ namespace AssemblyReading
             typeMap.Aggregate = aggregate;
             typeMap.Events = _eventList;
 
-            if (typeMap.Aggregate is { })
-            {
-                Out.Info($"Aggregate '{ColorAs.Value(typeMap.Aggregate.Name)}', {ColorAs.Value(typeMap.Aggregate.Id.ToString())}.{Environment.NewLine}EventTypes found in binaries folder: {ColorAs.Value(typeMap.Events.Count.ToString())}");
-            }
             return typeMap;
         }
 

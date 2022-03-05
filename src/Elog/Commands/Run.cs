@@ -103,7 +103,7 @@ namespace Elog.Commands
                 .Border(TableBorder.Rounded);
 
             var liveTable = new LiveDataTable<EventSource>()
-                .WithHeader("Use right/left to flip pages. Commands: [[ (i)nspect ]]")
+                .WithHeader($"Displaying {ColorAs.Value(uniqueEventSources!.Count().ToString())} unique Aggregates: ")
                 .WithDataSource(uniqueEventSources)
                 .WithColumns("Aggregate root", "Aggregate Id", "Event count", "Last offset", "Last updated")
                 .WithEnterInstruction("Inspect Aggregate with ID: {0}", p => p.Id)
@@ -161,7 +161,7 @@ namespace Elog.Commands
             var eventLog = (await reader.GetEventLog(map, guidId).ConfigureAwait(false)).ToList();
 
             var liveTable = new LiveDataTable<EventEntry>()
-                .WithHeader($"{Environment.NewLine}Event history for '{ColorAs.Value(map.Aggregate.Name)}' Id: {guidId}")
+                .WithHeader($"{Environment.NewLine}Event history for '{ColorAs.Value(map.Aggregate.Name)}' with id: {ColorAs.Value(guidId)}")
                 .WithEnterInstruction("see the payload of the selected '{0}' event", e => e.Event)
                 .WithDataSource(eventLog)
                 .WithColumns("Aggregate", "Event", "Time")
