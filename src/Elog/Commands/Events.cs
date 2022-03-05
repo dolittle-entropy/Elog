@@ -17,6 +17,7 @@ namespace Elog.Commands
         readonly ElogConfiguration? _config;
         readonly EventStoreReader _eventStoreReader;
         readonly AssemblyReader _assemblyReader;
+        private CommandContext _context;
 
         public Events()
         {
@@ -29,6 +30,7 @@ namespace Elog.Commands
 
         public override int Execute([NotNull] CommandContext context, [NotNull] EventSettings settings)
         {
+            _context = context;
             _assemblyReader.DiscoverDolittleTypes();
 
             if (!string.IsNullOrEmpty(settings.Filter))
@@ -52,7 +54,7 @@ namespace Elog.Commands
         }
 
         private void DisplayEventUsage(DolittleEventUsage? eventUsage)
-        {            
+        {
             var headerTable = new Table()
                 .Border(TableBorder.Simple)
                 .AddColumns("Sample", "Value");
@@ -65,25 +67,30 @@ namespace Elog.Commands
 
             AnsiConsole.Write(headerTable);
 
-            if(eventUsage.InvocationCount > 0)
+            if (eventUsage.InvocationCount > 0)
             {
 
-            new LiveDataTable<DolittleAggregateUsage>()
-                .WithHeader($"Found {eventUsage.AggregateUsages.Count} event types;")
-                .WithDataSource(eventUsage.AggregateUsages.Values)
-                .WithColumns("Invoked by Aggregate", "Aggregate root Id", "Invocations")
-                .WithDataPicker(eu => new()
-                {
-                    eu.Aggregate.Name,
-                    eu.Aggregate.Id.ToString(),
-                    Out.BigNumber(eu.InvocationCount)
-                })
-                .WithEnterInstruction("drill into {0}", p => p.Aggregate.Name)
-                .WithSelectionAction(selected => 
-                {
-                    System.Console.WriteLine($"TODO: Show invocations on {selected.Aggregate.Name}");
-                })
-                .Start();
+                new LiveDataTable<DolittleAggregateUsage>()
+                    .WithHeader($"Found {eventUsage.AggregateUsages.Count} event types;")
+                    .WithDataSource(eventUsage.AggregateUsages.Values)
+                    .WithColumns("Invoked by Aggregate", "Aggregate root Id", "Invocations")
+                    .WithDataPicker(eu => new()
+                    {
+                        eu.Aggregate.Name,
+                        eu.Aggregate.Id.ToString(),
+                        Out.BigNumber(eu.InvocationCount)
+                    })
+                    .WithEnterInstruction("drill into {0}", p => p.Aggregate.Name)
+                    .WithSelectionAction(selected =>
+                    {
+                        var runSettings = new RunSettings
+                        {
+                            AggregateName = selected.Aggregate.Name
+                        };
+                        var run = new Run();
+                        run.Execute(_context, runSettings);
+                    })
+                    .Start();
             }
             else
                 Out.Warning($"No invocations of {ColorAs.Value(eventUsage.DolittleEvent.Name)} were found in the event log");
