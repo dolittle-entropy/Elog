@@ -78,7 +78,11 @@ namespace Elog.Commands
                     eu.Aggregate.Id.ToString(),
                     Out.BigNumber(eu.InvocationCount)
                 })
-                .WithEnterInstruction("drill into {0}", p => p.Aggregate.Name)                
+                .WithEnterInstruction("drill into {0}", p => p.Aggregate.Name)
+                .WithSelectionAction(selected => 
+                {
+                    System.Console.WriteLine($"TODO: Show invocations on {selected.Aggregate.Name}");
+                })
                 .Start();
             }
             else
@@ -87,33 +91,43 @@ namespace Elog.Commands
 
         private void DisplayEventList(List<DolittleEvent> dolittleEvents)
         {
-            var cancelChoice = ColorAs.Warning("*** CANCEL ***");
+            var header = ColorAs.Value($"{dolittleEvents.Count} EventType");
+            new LiveDataTable<DolittleEvent>()
+                .WithHeader($"Found {header} entries:")
+                .WithEnterInstruction("display usages of EventType '{0}'", p => p.Name)
+                .WithDataSource(dolittleEvents)
+                .WithColumns("EventType", "EventType Identifier")
+                .WithDataPicker(p => new List<string> { p.Name, p.Id.ToString() })
+                .WithSelectionAction(selected => DisplayFiltered(selected.Name))
+                .Start();
 
-            var table = new Table().AddColumns("Event Type", "Event Type Id");
+            //var cancelChoice = ColorAs.Warning("*** CANCEL ***");
 
-            var orderedEvents = dolittleEvents.OrderBy(x => x.Name).ToList();
-            for (int i = 0; i < orderedEvents.Count; i++)
-            {
-                table.AddRow(orderedEvents[i].Name, orderedEvents[i].Id);
-            }
-            Out.Info($"Found {orderedEvents.Count} Event types:");
-            AnsiConsole.Write(table);
+            //var table = new Table().AddColumns("Event Type", "Event Type Id");
 
-            var choices = new List<string>();
-            choices.Add(cancelChoice);
-            choices.AddRange(dolittleEvents.Select(x => x.Name));
+            //var orderedEvents = dolittleEvents.OrderBy(x => x.Name).ToList();
+            //for (int i = 0; i < orderedEvents.Count; i++)
+            //{
+            //    table.AddRow(orderedEvents[i].Name, orderedEvents[i].Id);
+            //}
+            //Out.Info($"Found {orderedEvents.Count} Event types:");
+            //AnsiConsole.Write(table);
 
-            Out.Info($"Select event to inspect or {cancelChoice} to finish:");
+            //var choices = new List<string>();
+            //choices.Add(cancelChoice);
+            //choices.AddRange(dolittleEvents.Select(x => x.Name));
 
-            var response = AnsiConsole.Prompt(new SelectionPrompt<string>()
-                .PageSize(3)
-                .MoreChoicesText(ColorAs.Info("Use Up/down to scroll"))
-                .AddChoices(choices));
+            //Out.Info($"Select event to inspect or {cancelChoice} to finish:");
 
-            if (response == cancelChoice)
-                return;
+            //var response = AnsiConsole.Prompt(new SelectionPrompt<string>()
+            //    .PageSize(3)
+            //    .MoreChoicesText(ColorAs.Info("Use Up/down to scroll"))
+            //    .AddChoices(choices));
 
-            DisplayFiltered(response);
+            //if (response == cancelChoice)
+            //    return;
+
+            //DisplayFiltered(response);
         }
     }
 }

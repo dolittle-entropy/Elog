@@ -63,6 +63,7 @@ namespace MongoDbReading
                 {
                     existing.EventCount++;
                     existing.LastOccurred = document["Metadata"]["Occurred"].AsDateTime;
+                    existing.LastOffset = (long)document["_id"].AsDecimal128;
                 }
                 else
                 {
