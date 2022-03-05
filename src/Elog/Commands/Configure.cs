@@ -31,13 +31,8 @@ namespace Elog.Commands
 
         public override int Execute([NotNull] CommandContext context, [NotNull] ConfigureSettings settings)
         {
-            if (settings.Create) { CreateConfiguration(false); return 0; }
-            if (settings.Delete) { DeleteConfiguration(); return 0; }
-            if (settings.ActiveConfiguration) { ChangeDefaultConfiguration(); return 0; }
-            if (settings.Update) { EditSomeConfiguration(); return 0; }
-
             Console.WriteLine("");
-            DisplayConfigurations();
+            DisplayConfigurations(settings);
 
             return 0;
         }
@@ -52,28 +47,8 @@ namespace Elog.Commands
             }
         }
 
-        private void EditSomeConfiguration()
-        {
-            const string cancelMessage = "[red]* Cancel[/]";
-            const string marker = "[yellow] *active*[/]";
-
-            var configurations = LoadConfigurations();
-            var list = new List<string>();
-            list.Add(cancelMessage);
-            list.AddRange(configurations.Select(c => c.IsDefault ? $"{c.Name}{marker}" : c.Name));
-
-            var editConfigName = AnsiConsole.Prompt(new SelectionPrompt<string>()
-                    .PageSize(10)
-                    .Title($"Select configuration to edit:")
-                    .MoreChoicesText("[green]* scroll with your arrow keys to see more[/]")
-                    .AddChoices(list));
-
-            if (editConfigName.Equals(cancelMessage))
-            {
-                Out.Warning("Edit configuration cancelled");
-                return;
-            }
-            editConfigName = editConfigName.Replace(marker, "");
+        private void EditSomeConfiguration(List<ElogConfiguration> configurations, string editConfigName)
+        {         
             var configToEdit = PopConfiguration(configurations, editConfigName);
             if (configToEdit is null)
                 AnsiConsole.MarkupLine($"ERROR: Configuration '{editConfigName}' not found");
@@ -110,30 +85,8 @@ namespace Elog.Commands
             return null;
         }
 
-        private void ChangeDefaultConfiguration()
+        private void ChangeDefaultConfiguration(List<ElogConfiguration> configurations, string newDefaultConfigName)
         {
-            var cancelMessage = ColorAs.Warning("Cancel");
-            var marker = ColorAs.Success(" **active**");
-
-            var configurations = LoadConfigurations();
-            var list = new List<string>();
-            list.Add(cancelMessage);
-            list.AddRange(configurations.Select(c => c.IsDefault ? $"{c.Name}{marker}" : c.Name));
-            var newDefaultConfigName = AnsiConsole.Prompt(new SelectionPrompt<string>()
-                    .PageSize(10)
-                    .Title($"Select the configuration to make active:")
-                    .MoreChoicesText("[green]* scroll with your arrow keys to see more[/]")
-                    .AddChoices(list));
-
-            if (newDefaultConfigName.Equals(cancelMessage))
-            {
-                Out.Warning("Canceled active configuration selection");
-                return;
-            }
-
-            if (newDefaultConfigName.EndsWith(marker))
-                newDefaultConfigName = newDefaultConfigName.Replace(marker, "");
-
             var yesDoIt = AnsiConsole.Confirm($"Make '{ColorAs.Value(newDefaultConfigName)}' your active configuration?", true);
             if (!yesDoIt)
             {
@@ -156,26 +109,8 @@ namespace Elog.Commands
             Out.Info($"Done. '{ColorAs.Value(newDefaultConfigName)}' is now the active configuration");
         }
 
-        private void DeleteConfiguration()
+        private void DeleteConfiguration(List<ElogConfiguration> configurations, string configurationToDelete)
         {
-            const string cancelMessage = "[red]* Cancel[/]";
-
-            var configurations = LoadConfigurations();
-            var list = new List<string>();
-            list.Add(cancelMessage);
-            list.AddRange(configurations.Select(c => c.Name));
-            var configurationToDelete = AnsiConsole.Prompt(new SelectionPrompt<string>()
-                    .PageSize(10)
-                    .Title($"Select configuration to delete:")
-                    .MoreChoicesText("[green]* scroll with your arrow keys to see more[/]")
-                    .AddChoices(list));
-
-            if (configurationToDelete.Equals(cancelMessage))
-            {
-                AnsiConsole.MarkupLine("[yellow]Delete operation aborted[/]");
-                return;
-            }
-
             var selectedConfiguration = configurations.First(c => c.Name.Equals(configurationToDelete));
             if (selectedConfiguration is { })
             {
@@ -213,7 +148,7 @@ namespace Elog.Commands
             return;
         }
 
-        private void DisplayConfigurations()
+        private void DisplayConfigurations([NotNull] ConfigureSettings settings)
         {
             var savedConfigs = LoadConfigurations();
             if (!savedConfigs?.Any() ?? true)
@@ -230,9 +165,10 @@ namespace Elog.Commands
                 .WithHeader($"Loaded {headerValue}:")
                 .WithDataSource(savedConfigs)
                 .WithColumns("Configuration", "Solution(s)", "Mongo Server", "EventStore Db", "Mongo Port", "Active")
+                .WithEnterInstruction("select the active configuration")
                 .WithDataPicker(p => new List<string>
-                { 
-                    
+                {
+
                     p.Name,
                     FindSolutionNameInBinariesPath(p.BinariesPath),
                     p.MongoConfig.MongoServer,
@@ -240,7 +176,24 @@ namespace Elog.Commands
                     p.MongoConfig.Port.ToString(),
                     p.IsDefault ? "Yes" : ""
                 })
-                .WithSelectionAction(a => Console.WriteLine("Todo!"))
+                .WithSelectionAction(a => 
+                {
+                    ChangeDefaultConfiguration(savedConfigs, a.Name);
+                })
+                .WithMultipleActions(
+                    new LiveKeyAction<ElogConfiguration>('e', "Edit the selected configuration", a =>
+                    {
+                        EditSomeConfiguration(savedConfigs, a.Name);
+                    }),
+                    new LiveKeyAction<ElogConfiguration>('d', "Delete the selected configuration", a =>
+                    {
+                        DeleteConfiguration(savedConfigs, a.Name);
+                    }),
+                    new LiveKeyAction<ElogConfiguration>('a', "Add new Configuration", a =>
+                    {
+                        CreateConfiguration(false);
+                    })
+                )
                 .Start();
         }
 
@@ -501,12 +454,12 @@ namespace Elog.Commands
                 }
                 existingConfiguration = JsonConvert.DeserializeObject<List<ElogConfiguration>>(fileContent);
             }
-            return existingConfiguration;
+            return existingConfiguration?.OrderBy(c => c.Name).ToList();
         }
 
         private void WriteConfiguration(List<ElogConfiguration> config)
         {
-            var serialized = JsonConvert.SerializeObject(config);
+            var serialized = JsonConvert.SerializeObject(config.OrderBy(c => c.Name).ToList());
             if (serialized.Length > 0)
             {
                 File.WriteAllText(_configurationFile, serialized);

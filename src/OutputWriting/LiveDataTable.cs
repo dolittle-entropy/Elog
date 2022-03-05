@@ -5,6 +5,20 @@ using Spectre.Console;
 
 namespace OutputWriting
 {
+    public class LiveKeyAction<T>
+    {
+        public LiveKeyAction(char key, string description, Action<T> action)
+        {
+            Key = key;
+            Description = description;
+            Action = action;
+        }
+
+        public char Key { get; set; }
+        public string Description { get; set; }
+        public Action<T> Action { get; set; }
+    }
+
     public class LiveDataTable<T>
     {
         private readonly int _pageSize = 20;
@@ -21,6 +35,7 @@ namespace OutputWriting
         private T _selectedItem;
         private string _enterInstruction;
         private Func<T, string> _idValuePicker;
+        private List<LiveKeyAction<T>> _keyActions;
         private readonly Table _masterTable;
 
         public LiveDataTable()
@@ -54,6 +69,12 @@ namespace OutputWriting
         public LiveDataTable<T> WithoutBorders()
         {
             _masterTable.Border(TableBorder.None);
+            return this;
+        }
+
+        public LiveDataTable<T> WithMultipleActions(params LiveKeyAction<T>[] actions)
+        {
+            _keyActions = new List<LiveKeyAction<T>>(actions);
             return this;
         }
 
@@ -111,6 +132,21 @@ namespace OutputWriting
             {
                 var keyAction = Console.ReadKey();
 
+                // MultiKey Actions
+                if (_keyActions != null && _keyActions.Any())
+                {
+                    if (_keyActions.FirstOrDefault(ka => ka.Key == keyAction.KeyChar) is LiveKeyAction<T> result)
+                    {
+                        if (_selectedItem != null)
+                        {
+                            _selectedItem = _sourceData.Skip(_currentPage).Take(_pageSize).ElementAt(_dataIndex);
+                            _selectionAction = result.Action;
+                            keepGoing = false;
+                            break;
+                        }
+                    }
+                }
+
                 // Next page
                 if (keyAction.Key == ConsoleKey.RightArrow || keyAction.Key == ConsoleKey.PageDown)
                 {
@@ -133,7 +169,7 @@ namespace OutputWriting
                 }
 
                 // First page
-                else if(keyAction.Key == ConsoleKey.Home || (keyAction.Modifiers.HasFlag(ConsoleModifiers.Control) && keyAction.Key == ConsoleKey.LeftArrow))
+                else if (keyAction.Key == ConsoleKey.Home || (keyAction.Modifiers.HasFlag(ConsoleModifiers.Control) && keyAction.Key == ConsoleKey.LeftArrow))
                 {
                     _currentPage = 0;
                 }
@@ -235,8 +271,9 @@ namespace OutputWriting
 
         void BuildTableFooter(LiveDisplayContext ctx)
         {
-            if (_masterTable.Rows.Count == 3)
-                _masterTable.RemoveRow(2);
+            var realCount = 3 + _keyActions?.Count ?? 0;
+            if (_masterTable.Rows.Count == realCount)
+                _masterTable.RemoveRow(2 + realCount);
 
             var pageInfo = _pageCount > 0
                 ? $"On page {_currentPage}/{_pageCount}"
@@ -257,6 +294,18 @@ namespace OutputWriting
             if (!string.IsNullOrEmpty(finalMessage))
             {
                 _masterTable.AddRow($"[tan italic]{finalMessage}[/]");
+            }
+
+            if (_keyActions != null && _keyActions.Count > 0)
+            {
+                var anotherTable = new Table();
+                anotherTable.Border(TableBorder.None);
+                anotherTable.HideHeaders();
+                anotherTable.AddColumns("Key", "Description");
+                _keyActions.ForEach(a => anotherTable.AddRow($"[tan italic][[{a.Key}]][/]", $"[tan italic]{a.Description}[/]"));
+
+                _masterTable.AddRow($"[tan italic]Additional commands:[/]");
+                _masterTable.AddRow(anotherTable);
             }
             ctx.Refresh();
         }
