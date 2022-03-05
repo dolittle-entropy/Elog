@@ -158,6 +158,7 @@ namespace MongoDbReading
             var allDocuments = await _collection.Find(filter).ToListAsync().ConfigureAwait(false);
 
             var completeList = new List<EventEntry>();
+            var counter = 0;
             foreach (var document in allDocuments)
             {
                 var eventTypeGuid = document["Metadata"]["TypeId"].AsGuid;
@@ -165,6 +166,8 @@ namespace MongoDbReading
 
                 completeList.Add(new EventEntry
                 {
+                    Counter = ++counter,
+                    Offset = (long) document["_id"].AsDecimal128,
                     Aggregate = map.Aggregate.Name,
                     Event = eventTypeId?.Name ?? "Unknown type",
                     IsPublic = document["Metadata"]["Public"].AsBoolean,

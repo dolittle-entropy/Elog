@@ -139,8 +139,9 @@ namespace OutputWriting
                     {
                         if (_selectedItem != null)
                         {
-                            _selectedItem = _sourceData.Skip(_currentPage).Take(_pageSize).ElementAt(_dataIndex);
-                            _selectionAction = result.Action;
+                            var skip = _pageSize * _currentPage;
+                            var subset = _sourceData.Skip(skip).Take(_pageSize);
+                            _selectedItem = subset.ElementAt(_dataIndex); _selectionAction = result.Action;
                             keepGoing = false;
                             break;
                         }
@@ -192,7 +193,9 @@ namespace OutputWriting
                 else if (keyAction.Key == ConsoleKey.Enter)
                 {
                     keepGoing = false;
-                    _selectedItem = _sourceData.Skip(_currentPage).Take(_pageSize).ElementAt(_dataIndex);
+                    var skip = _pageSize * _currentPage;
+                    var subset = _sourceData.Skip(skip).Take(_pageSize);
+                    _selectedItem = subset.ElementAt(_dataIndex);
                 }
 
                 // Clean up before exiting

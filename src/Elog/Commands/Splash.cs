@@ -34,9 +34,9 @@ namespace Elog.Commands
         {
             AnsiConsole.Clear();
             AnsiConsole.Write(new FigletText("ELOG").LeftAligned().Color(Color.Orange1));
+            ShowVersion(context);
             Out.Info($"A handy tool for working with Dolittle powered applications.{Environment.NewLine}");
             ShowHelp(context);            
-            ShowVersion(context);
 
             AnsiConsole.Reset();
             return 0;
@@ -46,18 +46,18 @@ namespace Elog.Commands
         {
             var hackyCommands = new List<HackyCommand>
             {
-                new HackyCommand("Configure", "c", "Manage your Elog configuration"),
                 new HackyCommand("Aggregates", "a", "Drill down into the Aggregates"),
                 new HackyCommand("Events", "e", "Drill into event types and their usages"),
+                new HackyCommand("Configure", "c", "Manage your Elog configuration"),
                 new HackyCommand("Cancel", "", "Exit this selection. [[ESC]] also cancels table selections")
             };
 
             new LiveDataTable<HackyCommand>()
                 .WithoutBorders()
-                .WithHeader("[bold]COMMANDS:[/]")
-                .WithColumns("Command", "Alias", "Description")
+                .WithHeader("[bold]ACTIONS:[/]")
+                .WithColumns("Command", "Description")
                 .WithDataSource(hackyCommands)
-                .WithDataPicker(p => new(){ p.Name, p.Alias, p.Description })
+                .WithDataPicker(p => new(){ p.Name, p.Description })
                 .WithEnterInstruction("invoke '{0}'", p => p.Name)
                 .WithSelectionAction(selectedOption =>
                 {

@@ -164,11 +164,13 @@ namespace Elog.Commands
                 .WithHeader($"{Environment.NewLine}Event history for '{ColorAs.Value(map.Aggregate.Name)}' with id: {ColorAs.Value(guidId)}")
                 .WithEnterInstruction("see the payload of the selected '{0}' event", e => e.Event)
                 .WithDataSource(eventLog)
-                .WithColumns("Aggregate", "Event", "Time")
+                .WithColumns("#", "Aggregate", "Event", "At Offset", "Time")
                 .WithDataPicker(e => new List<string>
                     {
+                        e.Counter.ToString(),
                         e.Aggregate,
                         e.Event,
+                        e.Offset.ToString(),
                         e.Time.ToString(Out.DetailedTimeFormat)
                     })
                 .WithSelectionAction(e => DisplayEventPayload(map, e, settings));
