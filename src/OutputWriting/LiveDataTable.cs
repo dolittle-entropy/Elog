@@ -117,7 +117,7 @@ namespace OutputWriting
                     if (++_currentPage > _pageCount)
                         _currentPage = _pageCount;
 
-                }                
+                }
 
                 // Previous page
                 else if (keyAction.Key == ConsoleKey.LeftArrow || keyAction.Key == ConsoleKey.PageUp)
@@ -126,11 +126,23 @@ namespace OutputWriting
                         _currentPage = 0;
                 }
 
+                // Last page
+                else if (keyAction.Key == ConsoleKey.End || (keyAction.Modifiers.HasFlag(ConsoleModifiers.Control) && keyAction.Key == ConsoleKey.RightArrow))
+                {
+                    _currentPage = _pageCount;
+                }
+
+                // First page
+                else if(keyAction.Key == ConsoleKey.Home || (keyAction.Modifiers.HasFlag(ConsoleModifiers.Control) && keyAction.Key == ConsoleKey.LeftArrow))
+                {
+                    _currentPage = 0;
+                }
+
                 // Select index downwards
                 else if (keyAction.Key == ConsoleKey.DownArrow)
                 {
                     if (++_dataIndex >= _pageSize)
-                        _dataIndex = _pageSize;                    
+                        _dataIndex = _pageSize;
                 }
 
                 // Select index upwards
@@ -172,9 +184,9 @@ namespace OutputWriting
 
         void ClearMasterTable(LiveDisplayContext ctx)
         {
-            if(_masterTable is { } && _masterTable.Rows.Count > 0)
+            if (_masterTable is { } && _masterTable.Rows.Count > 0)
             {
-                for(int i = _masterTable.Rows.Count - 1; i > 0; i--)                
+                for (int i = _masterTable.Rows.Count - 1; i > 0; i--)
                     _masterTable.Rows.RemoveAt(i);
                 ctx.Refresh();
             }
@@ -182,7 +194,7 @@ namespace OutputWriting
 
         void BuildDataTable(LiveDisplayContext ctx)
         {
-            
+
             ClearDataRows(ctx);
             ClearMasterTable(ctx);
 
@@ -201,18 +213,21 @@ namespace OutputWriting
             var skipAmount = _currentPage * _pageSize;
             var subset = _sourceData.Skip(skipAmount).Take(_pageSize).ToList();
             for (int i = 0; i < subset.Count; i++)
-            {               
+            {
                 var dataValues = _picker(subset[i]);
                 if (_dataIndex == i)
                 {
 
                     var colored = dataValues.Select(v => ColorAs.Success(v));
-                    _dataTable.AddRow(colored.ToArray());                    
+                    _dataTable.AddRow(colored.ToArray());
                 }
                 else
                 {
                     _dataTable.AddRow(dataValues.ToArray());
                 }
+                while (_dataIndex >= subset.Count)
+                    _dataIndex--;
+
                 _selectedItem = subset[_dataIndex];
                 ctx.Refresh();
             }
@@ -223,7 +238,7 @@ namespace OutputWriting
             if (_masterTable.Rows.Count == 3)
                 _masterTable.RemoveRow(2);
 
-            var pageInfo = _pageCount > 0 
+            var pageInfo = _pageCount > 0
                 ? $"On page {_currentPage}/{_pageCount}"
                 : string.Empty;
 
@@ -235,11 +250,11 @@ namespace OutputWriting
 
             if (pageInfo.Length > 0 && message.Length > 0)
                 finalMessage = $"{pageInfo}, press [[ENTER]] to {message}";
-            
+
             else if (pageInfo.Length == 0 && message.Length > 0)
                 finalMessage = $"Press [[ENTER]] to {message}";
 
-            if(!string.IsNullOrEmpty(finalMessage))
+            if (!string.IsNullOrEmpty(finalMessage))
             {
                 _masterTable.AddRow($"[tan italic]{finalMessage}[/]");
             }

@@ -40,10 +40,10 @@ namespace AssemblyReading
             "StackExchange.Redis",
             "BaselineTypeDiscovery",
             "GreenDonut",
-            "Pipelines"
+            "Pipelines",
+            "FluentValidation",
         };
         readonly string _assemblyFolder;
-        readonly string _aggregateRootPath;
         readonly MetadataLoadContext _metadataContext;
 
         readonly List<DolittleAggregate> _aggregateList;
@@ -52,23 +52,33 @@ namespace AssemblyReading
 
         public AssemblyReader(string dolittleAssemblyFolder)
         {
+            const string EventsAssemblyName = "Dolittle.SDK.Events.dll";
             const string ExpectedAssemblyName = "Dolittle.SDK.Aggregates.dll";
+            const string ProjectionsAssemblyName = "Dolittle.SDK.Projections.dll";
+            const string EventHandlingAssemblyName = "Dolittle.SDK.Events.Handling.dll";
 
             _assemblyFolder = dolittleAssemblyFolder;
-            _aggregateRootPath = Path.Combine(_assemblyFolder, ExpectedAssemblyName);
-            var eventTypePath = Path.Combine(_assemblyFolder, "Dolittle.SDK.Events.dll");
-            if (!File.Exists(_aggregateRootPath))
-                throw new FileNotFoundException(nameof(_aggregateRootPath));
+
+            var aggregateRootPath = Path.Combine(_assemblyFolder, ExpectedAssemblyName);
+            var eventTypePath = Path.Combine(_assemblyFolder, EventsAssemblyName);
+            var eventHandlingTypePath = Path.Combine(_assemblyFolder, EventHandlingAssemblyName);
+            var projectionsTypePath = Path.Combine(_assemblyFolder, ProjectionsAssemblyName);
+
+            if (!File.Exists(aggregateRootPath))
+                throw new FileNotFoundException(nameof(aggregateRootPath));
 
             var resolver = new PathAssemblyResolver(new List<string>(Directory.GetFiles(RuntimeEnvironment.GetRuntimeDirectory(), "*.dll"))
                     {
-                        _aggregateRootPath,
-                        eventTypePath
+                        eventTypePath,
+                        aggregateRootPath,
+                        projectionsTypePath,
+                        eventHandlingTypePath,
                     });
-            _metadataContext = new MetadataLoadContext(resolver);
-            _aggregateList = new List<DolittleAggregate>();
+
             _eventList = new List<DolittleEvent>();
+            _aggregateList = new List<DolittleAggregate>();
             _projectionList = new List<DolittleProjection>();
+            _metadataContext = new MetadataLoadContext(resolver);
         }
 
         public List<DolittleAggregate> DolittleAggregates => _aggregateList;
@@ -135,17 +145,23 @@ namespace AssemblyReading
                         {
                             if (MapTypeToAggregateRoot(type))
                                 continue;
-
+                        }
+                        catch
+                        { }
+                        try
+                        {
                             if (MapTypeToDolittleEvent(type))
                                 continue;
-
+                        }
+                        catch
+                        { }
+                        try
+                        {
                             if (MapTypeToDolittleProjection(type))
                                 continue;
                         }
                         catch
-                        {
-                            continue;
-                        }
+                        { }
                     }
                     typesTask.Value = 100.0;
                 }
