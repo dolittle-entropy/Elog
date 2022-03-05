@@ -72,7 +72,9 @@ namespace Elog.Commands
                     .WithSelectionAction(selectedAggregate =>
                     {
                         settings.AggregateName = selectedAggregate.Name;
-                        var map = _assemblyReader.GenerateMapForAggregate(settings.AggregateName);
+                        var map = _assemblyReader.GenerateMapForAggregate(settings.AggregateName)
+                        ?? throw new ArgumentNullException($"Unable to generate map for the aggregate {settings.AggregateName}");
+
                         ListEventsForAggregate(map, settings).Wait();
                     }).Start();
             }
@@ -95,7 +97,7 @@ namespace Elog.Commands
                 Out.Warning($"No aggregates were found for type '{ColorAs.Value(map.Aggregate.Name)}'");
                 return;
             }
-            Out.Info($"{ColorAs.Value(uniqueEventSources.Count().ToString())} unique Identities found for {ColorAs.Value(map.Aggregate.Name)}. {Environment.NewLine}Add the {ColorAs.Value("<identity>")}' to see its event log.\n");
+            Out.Info($"{ColorAs.Value(uniqueEventSources!.Count().ToString())} unique Identities found for {ColorAs.Value(map.Aggregate.Name)}. {Environment.NewLine}Add the {ColorAs.Value("<identity>")}' to see its event log.\n");
 
             var dataTable = new Table()
                 .Border(TableBorder.Rounded);

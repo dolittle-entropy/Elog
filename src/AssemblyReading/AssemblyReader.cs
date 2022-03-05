@@ -90,8 +90,11 @@ namespace AssemblyReading
         public DolittleTypeMap? GenerateMapForAggregate(string aggregateName)
         {
             var typeMap = new DolittleTypeMap();
-            DiscoverDolittleTypes();
-            var aggregate = _aggregateList.FirstOrDefault(a => a.Name.Equals(aggregateName, StringComparison.InvariantCultureIgnoreCase));
+            
+            if(_aggregateList is null || !_aggregateList.Any())
+                DiscoverDolittleTypes();
+
+            var aggregate = _aggregateList!.FirstOrDefault(a => a.Name.Equals(aggregateName, StringComparison.InvariantCultureIgnoreCase));
 
             if (aggregate == null)
                 return null;
