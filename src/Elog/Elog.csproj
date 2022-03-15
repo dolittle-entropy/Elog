@@ -5,8 +5,8 @@
     <Nullable>enable</Nullable>
     <TargetFramework>net6.0</TargetFramework>
     <PackAsTool>true</PackAsTool>
-    <AssemblyVersion>1.0.8.0</AssemblyVersion>
-    <FileVersion>1.0.8.0</FileVersion>
+    <AssemblyVersion>1.0.9.0</AssemblyVersion>
+    <FileVersion>1.0.9.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Authors>Dolittle AS/digitaldias</Authors>
     <Company>Dolittle AS</Company>
@@ -18,13 +18,12 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>elog</ToolCommandName>
     <PackageIcon>dolittle_positiv_kvadratisk@4x_RGB.png</PackageIcon>
-    <Version>1.0.8</Version>
+    <Version>1.0.9</Version>
     <NeutralLanguage>en</NeutralLanguage>
     <Platforms>AnyCPU;x86;x64</Platforms>
     <RepositoryType>git</RepositoryType>
     <PackageReleaseNotes>
-      Elog now uses Spectre.Console.Cli to provide commands
-      A new 'Event' feature has been added to show Dolittle Event information
+      Fixes a bug where messages containing the characters '[' and ']' interfered with the output formatting of Ansi.Console
     </PackageReleaseNotes>
     <PackageId>Dolittle.Elog</PackageId>
   </PropertyGroup>

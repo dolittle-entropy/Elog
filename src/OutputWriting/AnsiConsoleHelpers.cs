@@ -12,16 +12,21 @@ namespace OutputWriting
             => ColorAs.Value(number.ToString(BigNumberFormat).Trim());
 
         public static void Info(string message)
-            => AnsiConsole.MarkupLine(ColorAs.Info(message));
+            => AnsiConsole.MarkupLine(ColorAs.Info(CleanMessage(message)));
 
         public static void Warning(string message)
-            => AnsiConsole.MarkupLine(ColorAs.Warning(message));
+            => AnsiConsole.MarkupLine(ColorAs.Warning(CleanMessage(message)));
 
         public static void Error(string message)
-            => AnsiConsole.MarkupLine(ColorAs.Error(message));
+            => AnsiConsole.MarkupLine(ColorAs.Error(CleanMessage(message)));
 
         public static void Success(string message)
-            => AnsiConsole.MarkupLine(ColorAs.Success(message));
+            => AnsiConsole.MarkupLine(ColorAs.Success(CleanMessage(message)));
+
+        static string? CleanMessage(string? message)
+        {
+            return message?.Replace("[", "[[").Replace("]", "]]") ?? default;
+        }
 
         public static void Content(string title, string content)
         {
