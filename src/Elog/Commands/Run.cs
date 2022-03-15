@@ -183,7 +183,15 @@ namespace Elog.Commands
             var json = JsonConvert.DeserializeObject(eventEntry.PayLoad);
             Out.Info($"Displaying {eventEntry.Event} from aggregate {ColorAs.Value(map.Aggregate.Name)} with id {ColorAs.Value(settings.Id)}:");
             Out.Info($"This event is of type {ColorAs.Value(eventEntry.Event)} and was applied on {ColorAs.Value(eventEntry.Time.ToString("dddd dd.MMMyyyy HH:mm:ss.ffff"))}");
-            Out.Content("JSON Content", json?.ToString() ?? ColorAs.Error("--NO CONTENT--"));
+            if (json.ToString() is string jsonPayload)
+            {
+                var content = Out.CleanMessage(jsonPayload);
+                Out.Content("JSON Content", content);
+            }
+            else
+            {
+                Out.Content("ERROR", ColorAs.Error("--NO CONTENT--"));
+            }
         }
     }
 }

@@ -12,18 +12,18 @@ namespace OutputWriting
             => ColorAs.Value(number.ToString(BigNumberFormat).Trim());
 
         public static void Info(string message)
-            => AnsiConsole.MarkupLine(ColorAs.Info(CleanMessage(message)));
+            => AnsiConsole.MarkupLine(ColorAs.Info(message));
 
         public static void Warning(string message)
-            => AnsiConsole.MarkupLine(ColorAs.Warning(CleanMessage(message)));
+            => AnsiConsole.MarkupLine(ColorAs.Warning(message));
 
         public static void Error(string message)
-            => AnsiConsole.MarkupLine(ColorAs.Error(CleanMessage(message)));
+            => AnsiConsole.MarkupLine(ColorAs.Error(message));
 
         public static void Success(string message)
-            => AnsiConsole.MarkupLine(ColorAs.Success(CleanMessage(message)));
+            => AnsiConsole.MarkupLine(ColorAs.Success(message));
 
-        static string? CleanMessage(string? message)
+        public static string? CleanMessage(string? message)
         {
             return message?.Replace("[", "[[").Replace("]", "]]") ?? default;
         }
