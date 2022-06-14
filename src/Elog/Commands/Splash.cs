@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using OutputWriting;
@@ -100,7 +98,7 @@ namespace Elog.Commands
         private static int ShowVersion(CommandContext context)
         {
             var versionInformation = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
-            Out.Success($"Dolittle.Elog version {ColorAs.Value(versionInformation.ProductVersion)}. MIT Licensed software 2020-2022 Dolittle AS");
+            Out.Success($"Dolittle.Elog version {ColorAs.Value(versionInformation.ProductVersion!)}. MIT Licensed software 2020-2022 Dolittle AS");
             return 0;
         }
     }

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AssemblyReading;
 using Common;
+using MongoDB.Bson;
 using MongoDbReading;
 using Newtonsoft.Json;
 using OutputWriting;
@@ -104,7 +105,7 @@ namespace Elog.Commands
 
             var liveTable = new LiveDataTable<EventSource>()
                 .WithHeader($"Displaying {ColorAs.Value(uniqueEventSources!.Count().ToString())} unique Aggregates: ")
-                .WithDataSource(uniqueEventSources)
+                .WithDataSource(uniqueEventSources!)
                 .WithColumns("Aggregate root", "Aggregate Id", "Event count", "Last offset", "Last updated")
                 .WithEnterInstruction("Inspect Aggregate with ID: {0}", p => p.Id)
                 .WithDataPicker(item =>
@@ -179,14 +180,17 @@ namespace Elog.Commands
         }
 
         void DisplayEventPayload(DolittleTypeMap map, EventEntry eventEntry, [NotNull] RunSettings settings)
-        {
-            var json = JsonConvert.DeserializeObject(eventEntry.PayLoad);
+        {            
+            var bsonDocument = BsonDocument.Parse(eventEntry.PayLoad);
+            var dotNetThing = BsonTypeMapper.MapToDotNetValue(bsonDocument);
+            var serialized = JsonConvert.SerializeObject(dotNetThing);
+            var json = JsonConvert.DeserializeObject(serialized);
             Out.Info($"Displaying {eventEntry.Event} from aggregate {ColorAs.Value(map.Aggregate.Name)} with id {ColorAs.Value(settings.Id)}:");
             Out.Info($"This event is of type {ColorAs.Value(eventEntry.Event)} and was applied on {ColorAs.Value(eventEntry.Time.ToString("dddd dd.MMMyyyy HH:mm:ss.ffff"))}");
             if (json.ToString() is string jsonPayload)
             {
                 var content = Out.CleanMessage(jsonPayload);
-                Out.Content("JSON Content", content);
+                Out.Content("JSON Content", content!);
             }
             else
             {

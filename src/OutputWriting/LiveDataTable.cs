@@ -32,8 +32,8 @@ namespace OutputWriting
         private Table _dataTable;
         Func<T, IEnumerable<string>> _picker;
         private Action<T> _selectionAction;
-        private T _selectedItem;
-        private string _enterInstruction;
+        private T? _selectedItem;
+        private string? _enterInstruction;
         private Func<T, string> _idValuePicker;
         private List<LiveKeyAction<T>> _keyActions;
         private readonly Table _masterTable;
@@ -58,10 +58,10 @@ namespace OutputWriting
         /// <param name="message">The message that indicates what happens when you press [ENTER]</param>
         /// <param name="idValuePicker">Optional idValuePicker, so you can format your message with the selected Id</param>
         /// <returns></returns>
-        public LiveDataTable<T> WithEnterInstruction(string message, Func<T, string> idValuePicker = null)
+        public LiveDataTable<T> WithEnterInstruction(string message, Func<T, string>? idValuePicker = null)
         {
             _enterInstruction = message;
-            _idValuePicker = idValuePicker;
+            _idValuePicker = idValuePicker!;
 
             return this;
         }
@@ -101,7 +101,7 @@ namespace OutputWriting
 
         public LiveDataTable<T> WithDataSource(IEnumerable<T> sourceData)
         {
-            _sourceData = sourceData.ToList();
+            _sourceData = sourceData!.ToList();
             return this;
         }
 
@@ -284,7 +284,7 @@ namespace OutputWriting
 
             var message = _enterInstruction ?? string.Empty;
             if (_idValuePicker != null)
-                message = string.Format(_enterInstruction, _idValuePicker(_selectedItem));
+                message = string.Format(_enterInstruction!, _idValuePicker(_selectedItem!));
 
             var finalMessage = pageInfo;
 
